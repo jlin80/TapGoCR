@@ -15,6 +15,30 @@ const FAQ: Array<{ q: string; a: string }> = [
     a: "No. El cliente acerca el teléfono a la placa NFC o escanea el QR con la cámara, y el navegador abre la página del negocio directamente.",
   },
   {
+    q: "¿Tengo que configurarlo yo?",
+    a: "No. Nos pasás tu información —logo, enlaces, menú, WhatsApp, redes— y nosotros diseñamos y configuramos todo: la placa, el NFC, el QR y tu página. Vos elegís qué querés, nosotros hacemos el resto.",
+  },
+  {
+    q: "¿Puedo poner mi logo?",
+    a: "Sí, tu página lleva tu logo, tus colores y tu nombre. Es la experiencia digital de tu negocio, no una genérica de TapGoCR.",
+  },
+  {
+    q: "¿La placa es mía?",
+    a: "Sí. La compra de la placa es un pago único y es tuya. La plataforma que la hace funcionar (analytics, panel, actualizaciones) sí tiene una mensualidad según tu plan; también existe una opción de pago único sin mensualidad, con funciones más básicas.",
+  },
+  {
+    q: "¿Puedo cambiar el destino de mi placa?",
+    a: "Sí, cuando quieras y las veces que quieras, desde tu panel. La placa nunca cambia; lo que abre del otro lado sí, y lo controlás vos.",
+  },
+  {
+    q: "¿Tiene mensualidad?",
+    a: "Depende del plan. Los planes con plataforma (analytics, panel, actualizaciones y soporte) tienen una mensualidad. También podés empezar con la opción de pago único, sin mensualidad, con funciones más básicas.",
+  },
+  {
+    q: "¿Qué incluye la compra?",
+    a: "Tu placa personalizada, el chip NFC, el código QR, el diseño y la configuración inicial. Todo listo para usar desde el primer día.",
+  },
+  {
     q: "¿Puedo usar NFC y QR al mismo tiempo?",
     a: "Sí, siempre van juntos en la misma placa: si el teléfono no tiene NFC o lo tiene desactivado, el QR impreso lleva exactamente al mismo lugar.",
   },
@@ -39,12 +63,16 @@ const FAQ: Array<{ q: string; a: string }> = [
     a: "Sí. El QR siempre está impreso en la misma placa como alternativa: si el teléfono no tiene NFC o lo tiene desactivado, la cámara escanea el QR y llega al mismo lugar.",
   },
   {
+    q: "¿Puedo usarlo para varias cosas a la vez?",
+    a: "Sí. Una misma placa puede llevar a tu menú, WhatsApp, reseñas, redes y más, todo en una sola página que tu cliente recorre con el dedo.",
+  },
+  {
     q: "¿Puedo tener múltiples placas?",
     a: "Sí. Cada plan incluye una cantidad de placas activas (mesa, entrada, mostrador, etc.) y podés agregar más cuando las necesités.",
   },
   {
     q: "¿Puedo agregar otra sucursal?",
-    a: "Sí, con el plan Chain: cada sucursal tiene su propia página y sus propias placas, con analytics comparado entre sucursales.",
+    a: "Sí, con el plan Pro o con una propuesta a medida: cada sucursal tiene su propia página y sus propias placas.",
   },
   {
     q: "¿Puedo saber qué placa recibe más interacciones?",

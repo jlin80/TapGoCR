@@ -24,6 +24,7 @@ const NAV: NavGroup[] = [
       { href: "/app/businesses", label: "Negocios" },
       { href: "/app/tags", label: "Tags" },
       { href: "/app/chips", label: "Chips" },
+      { href: "/app/templates", label: "Templates" },
     ],
   },
   {

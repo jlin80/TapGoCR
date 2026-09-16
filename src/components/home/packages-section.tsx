@@ -1,52 +1,44 @@
-import Link from "next/link";
-
-import { Blobs, PackageCard, SectionHeading } from "@/components/marketing";
+import { PackageCard, SectionHeading } from "@/components/marketing";
 import { PACKAGES } from "@/lib/packages";
 
 /**
- * Paquetes comerciales.
+ * Servicios adicionales, no una segunda escalera de precios.
  *
- * Los datos viven en `src/lib/packages.ts`: los comparte esta sección y cada
- * página de desglose en `/paquetes/{slug}`.
+ * `PACKAGES` tiene 5 niveles (`src/lib/packages.ts`), pero los dos primeros
+ * (NFC+QR, NFC+QR+Analytics) ya están cubiertos por Starter/Business/Pro —
+ * mostrarlos acá otra vez era la "doble oferta" que confundía: dos escaleras
+ * de precio compitiendo en la misma página. Solo se muestran los niveles que
+ * de verdad son un servicio aparte (dominio propio, sitio web, todo
+ * administrado), como upsell después de que ya se entendió el plan.
+ *
+ * Ningún slug ni ruta se tocó: `/paquetes/{slug}` sigue existiendo para los
+ * 5 niveles — esto es solo qué se destaca en la home. `id="paquetes"` se
+ * mantiene porque `/precios` y otras páginas ya enlazan a `/#paquetes`.
  */
+const ADDITIONAL_SERVICES = PACKAGES.filter((item) => item.level >= 3);
+
 export function PackagesSection() {
   return (
-    <section id="paquetes" className="on-dark relative overflow-hidden border-b border-border">
-      <Blobs />
-
-      <div className="relative mx-auto max-w-6xl px-5 py-20 sm:py-24 lg:py-28">
+    <section id="paquetes" className="border-b border-border bg-surface-muted">
+      <div className="mx-auto max-w-5xl px-5 py-20 sm:py-24 lg:py-28">
         <SectionHeading
-          eyebrow="Paquetes"
-          title="Elegí hasta dónde querés llegar"
-          description="Se empieza por lo básico y se agrega lo demás cuando haga falta. Cada paquete incluye todo lo del anterior."
+          eyebrow="¿Necesitás algo más?"
+          title="Servicios adicionales"
+          description="Además de tu plan, podés sumar esto cuando tu negocio lo necesite."
         />
 
-        <ul className="mt-12 grid sm:mt-16 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {PACKAGES.map((item) => (
+        <ul className="mt-12 grid gap-6 sm:mt-16 sm:grid-cols-2 lg:grid-cols-3">
+          {ADDITIONAL_SERVICES.map((item) => (
             <PackageCard key={item.slug} {...item} />
           ))}
         </ul>
 
-        <p className="reveal mt-12 text-center text-muted">
-          Cada negocio es distinto.{" "}
-          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- nginx redirige /registro a app.{dominio}; <Link> falla por CORS al precargar cross-origin */}
-          <a href="/registro" className="font-medium text-brand hover:underline">
-            Registrá tu negocio
-          </a>{" "}
-          o{" "}
+        <p className="reveal mt-10 text-center text-muted">
+          ¿Necesitás algo puntual que no está acá?{" "}
           <a href="#contacto" className="font-medium text-brand hover:underline">
-            escribinos
+            Contanos
           </a>{" "}
-          y armamos una propuesta con lo que realmente necesitás.
-        </p>
-
-        <p className="reveal mt-3 text-center text-sm text-muted">
-          Esto es lo que se instala en cada nivel. Para ver cuántas placas
-          incluye cada plan y el precio mensual,{" "}
-          <Link href="/precios" className="font-medium text-brand hover:underline">
-            mirá los planes
-          </Link>
-          .
+          y armamos una propuesta a medida.
         </p>
       </div>
     </section>

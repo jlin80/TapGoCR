@@ -17,9 +17,9 @@ export function ContactSection() {
 
       <div className="relative mx-auto max-w-3xl px-5 py-20 sm:py-24 lg:py-28">
         <SectionHeading
-          eyebrow="Contacto"
-          title="Hablemos de tu negocio"
-          description="Contanos qué tenés hoy y qué te gustaría lograr. Te respondemos con una propuesta concreta."
+          eyebrow="Quiero mi TapGo"
+          title="Contanos sobre tu negocio"
+          description="Elegí tu rubro y qué querés conseguir. Nosotros armamos la propuesta y la configuración — vos no tenés que resolver nada técnico."
         />
 
         {/* `zoom-in` reemplaza a `reveal`: son dos animaciones sobre el

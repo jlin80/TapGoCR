@@ -228,7 +228,7 @@ describe("sitio comercial", () => {
     // React intercala marcadores de comentario dentro del <h1>, así que se
     // comprueba un fragmento continuo del texto.
     const html = await response.text();
-    assert.match(html, /Conecta tu negocio/);
+    assert.match(html, /Tu negocio,/);
     assert.match(html, /Registrá tu negocio/);
   });
 

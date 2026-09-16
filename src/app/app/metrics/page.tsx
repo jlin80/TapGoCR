@@ -31,14 +31,14 @@ export default async function MetricsPage() {
       <section className="mb-12">
         <GroupHeading
           title="Ingreso recurrente"
-          description="MRR y ARR usan el precio de referencia de cada plan. En Chain es un piso: la cuenta real se negocia por sucursal, así que esta cifra nunca sobrestima."
+          description="MRR y ARR usan la mensualidad real de cada plan. Un negocio con precio a medida (override) igual cuenta con la mensualidad de su plan base, así que esta cifra nunca sobrestima el ingreso real."
         />
         <div className="grid gap-4 sm:grid-cols-3">
-          <MoneyCard label="MRR" value={metrics.mrrUsd} hint="Ingreso mensual recurrente" />
-          <MoneyCard label="ARR" value={metrics.arrUsd} hint="MRR × 12" />
+          <MoneyCard label="MRR" value={metrics.mrrCrc} hint="Ingreso mensual recurrente" />
+          <MoneyCard label="ARR" value={metrics.arrCrc} hint="MRR × 12" />
           <MoneyCard
             label="ARPU"
-            value={metrics.arpuUsd}
+            value={metrics.arpuCrc}
             hint="Ingreso mensual promedio por cliente activo"
           />
         </div>
@@ -113,8 +113,7 @@ function MoneyCard({
     <Card>
       <p className="stat-label">{label}</p>
       <p className="mt-2 font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight tabular-nums">
-        $
-        {value.toLocaleString("es-CR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        ₡{value.toLocaleString("es-CR")}
       </p>
       <p className="mt-1.5 text-xs text-muted">{hint}</p>
     </Card>

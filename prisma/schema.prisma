@@ -62,6 +62,20 @@ enum MenuMode {
   NATIVE
 }
 
+// Rubro elegido en el onboarding (registro público). Mismos slugs que
+// `src/lib/industries.ts`, en mayúsculas por convención de enum — sirve para
+// sugerir secciones y contenido inicial, nunca para bloquear funcionalidad:
+// un restaurante igual puede activar lo que use una tienda.
+enum Industry {
+  RESTAURANTES
+  CAFETERIAS
+  BARBERIAS
+  HOTELES
+  GIMNASIOS
+  TIENDAS
+  OTRO
+}
+
 // Preset visual de la landing pública. Un solo sistema de diseño, cinco
 // combinaciones de tokens (color, tipografía, forma) — no cinco páginas
 // distintas. Ver `src/lib/theme.ts`.
@@ -235,6 +249,7 @@ model Business {
   // Campos que el propio negocio administra desde "Mi página pública". Todos
   // son opcionales: la landing se degrada con elegancia cuando faltan.
   category   String?
+  industry   Industry?
   coverUrl   String?
   // Colores en formato #rrggbb. Sin ellos la landing usa la paleta de TapGoCR.
   brandColor String?
@@ -543,6 +558,7 @@ model Registration {
   phone        String
   passwordHash String
   businessName String
+  industry     Industry?
   legalId      String?
   address      String
   province     String

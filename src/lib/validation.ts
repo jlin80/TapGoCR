@@ -4,6 +4,7 @@ import {
   ChipModel,
   ChipStatus,
   DomainStatus,
+  Industry,
   LandingTheme,
   LeadStatus,
   LinkType,
@@ -145,6 +146,14 @@ export const businessSchema = z.object({
     ),
   description: optionalText(300),
   category: optionalText(60),
+  // El <select> de ROOT tiene una opción "Sin especificar" que manda "", no
+  // ausente: a diferencia del picker visual del registro (un <input hidden>
+  // que solo existe cuando hay una industria elegida), acá "" es un valor
+  // real que hay que tratar como ausencia, no rechazar.
+  industry: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.enum(Industry).optional(),
+  ),
   logoUrl: optionalUrlField,
   coverUrl: optionalUrlField,
   brandColor: optionalHexColor,
@@ -345,6 +354,7 @@ export const registrationSchema = z
       .max(200),
     passwordConfirm: z.string().max(200),
     businessName: trimmed(120).min(2, "Escribí el nombre del negocio."),
+    industry: z.enum(Industry).optional(),
     legalId: optionalText(40),
     address: trimmed(200).min(5, "Escribí la dirección del negocio."),
     province: trimmed(60).min(2, "Indicá la provincia."),
@@ -389,7 +399,16 @@ export const contactSchema = z.object({
   email: z.email("Ingresá un correo válido.").max(254).toLowerCase(),
   phone: optionalText(40),
   businessName: optionalText(120),
-  message: trimmed(2000).min(10, "Contanos un poco más sobre lo que necesitás."),
+  // El camino corto de venta (hero, CTA final) no obliga a escribir un
+  // mensaje: alcanza con elegir rubro y objetivo. `submitContact` arma un
+  // mensaje legible con esos dos datos cuando esto viene vacío — la tabla
+  // `ContactLead.message` sigue siendo obligatoria, nunca queda vacía.
+  message: optionalText(2000),
+  industry: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.enum(Industry).optional(),
+  ),
+  goal: optionalText(120),
   website: z.string().max(200).optional(),
 });
 

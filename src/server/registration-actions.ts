@@ -101,6 +101,7 @@ export async function submitRegistration(
       phone: parsed.data.phone,
       passwordHash: await bcrypt.hash(password, BCRYPT_ROUNDS),
       businessName: parsed.data.businessName,
+      industry: parsed.data.industry,
       legalId: parsed.data.legalId,
       address: parsed.data.address,
       province: parsed.data.province,
@@ -218,6 +219,7 @@ async function finalizeRegistration(
         data: {
           name: registration.businessName,
           slug,
+          industry: registration.industry,
           legalId: registration.legalId,
           phone: registration.phone,
           whatsapp: registration.whatsapp,

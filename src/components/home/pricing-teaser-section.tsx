@@ -1,19 +1,10 @@
 import { Check, SectionHeading } from "@/components/marketing";
 import { CrossOriginLinkButton, cx, LinkButton } from "@/components/ui";
-import {
-  BUSINESS_FEATURES,
-  BUSINESS_PRICE,
-  HARDWARE_TIERS,
-  SMART_FEATURES,
-  SMART_PRICE,
-  TAPGO_FEATURES,
-  TRIAL_DAYS,
-} from "@/lib/offers";
+import { PLANS } from "@/lib/offers";
 
 /**
- * Vista previa de precios en la landing: la placa (pago único) y las dos
- * suscripciones opcionales de software, con los datos de `src/lib/offers.ts`
- * (la misma fuente que usa `/precios`).
+ * Vista previa de precios en la landing: los tres planes, con los datos de
+ * `src/lib/offers.ts` (la misma fuente que usa `/precios`).
  */
 export function PricingTeaserSection() {
   return (
@@ -21,101 +12,65 @@ export function PricingTeaserSection() {
       <div className="mx-auto max-w-6xl px-5 py-20 sm:py-24 lg:py-28">
         <SectionHeading
           eyebrow="Precios"
-          title="Elegí cómo querés usar TapGo"
-          description="Comprá tu placa una sola vez o llevála al siguiente nivel con TapGo Smart."
+          title="Empezá pequeño. Crecé cuando lo necesités."
+          description="Elegí la cantidad de puntos TapGo que necesitás hoy y agregá más cuando tu negocio crezca."
         />
 
         <ul className="mt-12 grid gap-6 sm:mt-16 lg:grid-cols-3">
-          <li className="reveal lift flex flex-col rounded-2xl border border-border bg-surface p-7">
-            <h3 className="text-lg font-semibold">TapGo</h3>
-            <p className="mt-2 flex items-baseline gap-1">
-              <span className="text-3xl font-semibold tracking-tight">
-                Desde {HARDWARE_TIERS[0].price}
-              </span>
-            </p>
-            <p className="mt-1 text-sm text-muted">Pago único · tu placa es tuya</p>
+          {PLANS.map((plan) => (
+            <li
+              key={plan.slug}
+              className={cx(
+                "reveal lift relative flex flex-col rounded-2xl bg-surface p-7",
+                plan.featured
+                  ? "border-2 border-brand shadow-xl shadow-brand/20"
+                  : "border border-border",
+              )}
+            >
+              {plan.featured ? (
+                <span className="absolute -top-3 left-7 rounded-full bg-gradient-to-r from-accent to-accent-strong px-3 py-1 text-[10px] font-semibold tracking-widest text-accent-contrast uppercase">
+                  Más elegido
+                </span>
+              ) : null}
 
-            <ul className="mt-5 flex flex-col gap-2.5 text-sm text-muted">
-              {TAPGO_FEATURES.map((feature) => (
-                <li key={feature} className="flex items-start gap-2.5">
-                  <Check />
-                  <span>{feature}</span>
-                </li>
-              ))}
-            </ul>
+              <h3 className="text-lg font-semibold">{plan.name}</h3>
 
-            <CrossOriginLinkButton href="/registro" variant="secondary" className="mt-6">
-              Comprar placa
-            </CrossOriginLinkButton>
-          </li>
+              <p className="mt-4 flex items-baseline gap-1.5">
+                <span className="text-3xl font-semibold tracking-tight">{plan.initialPrice}</span>
+                <span className="text-sm text-muted">pago inicial</span>
+              </p>
+              <p className="mt-1 text-sm text-muted">
+                + {plan.monthlyPrice}<span className="text-xs">/mes</span> de plataforma
+              </p>
 
-          <li className="reveal reveal-2 lift relative flex flex-col rounded-2xl border-2 border-brand bg-surface p-7 shadow-xl shadow-brand/20">
-            <span className="absolute -top-3 left-7 rounded-full bg-gradient-to-r from-accent to-accent-strong px-3 py-1 text-[10px] font-semibold tracking-widest text-accent-contrast uppercase">
-              Recomendado
-            </span>
+              <ul className="mt-5 flex flex-col gap-2.5 text-sm text-muted">
+                {plan.features.slice(0, 6).map((feature) => (
+                  <li key={feature} className="flex items-start gap-2.5">
+                    <Check />
+                    <span>{feature}</span>
+                  </li>
+                ))}
+              </ul>
 
-            <h3 className="text-lg font-semibold">TapGo Smart</h3>
-            <p className="mt-2 flex items-baseline gap-1">
-              <span className="text-3xl font-semibold tracking-tight">{SMART_PRICE}</span>
-              <span className="text-sm text-muted">/mes</span>
-            </p>
-            <p className="mt-1 text-sm text-muted">Convertí tu placa en inteligente</p>
-
-            <ul className="mt-5 flex flex-col gap-2.5 text-sm text-muted">
-              {SMART_FEATURES.map((feature) => (
-                <li key={feature} className="flex items-start gap-2.5">
-                  <Check />
-                  <span>{feature}</span>
-                </li>
-              ))}
-            </ul>
-
-            <CrossOriginLinkButton href="/registro" variant="primary" className="mt-6">
-              Activar Smart
-            </CrossOriginLinkButton>
-          </li>
-
-          <li className="reveal lift flex flex-col rounded-2xl border border-border bg-surface p-7">
-            <h3 className="text-lg font-semibold">TapGo Business</h3>
-            <p className="mt-2 flex items-baseline gap-1">
-              <span className="text-3xl font-semibold tracking-tight">{BUSINESS_PRICE}</span>
-              <span className="text-sm text-muted">/mes</span>
-            </p>
-            <p className="mt-1 text-sm text-muted">Para negocios que necesitan más control</p>
-
-            <ul className="mt-5 flex flex-col gap-2.5 text-sm text-muted">
-              {BUSINESS_FEATURES.map((feature) => (
-                <li key={feature} className="flex items-start gap-2.5">
-                  <Check />
-                  <span>{feature}</span>
-                </li>
-              ))}
-            </ul>
-
-            <LinkButton href="/precios" variant="secondary" className="mt-6">
-              Ver Business
-            </LinkButton>
-          </li>
+              <CrossOriginLinkButton
+                href="/registro"
+                variant={plan.featured ? "primary" : "secondary"}
+                className="mt-6"
+              >
+                {plan.cta}
+              </CrossOriginLinkButton>
+            </li>
+          ))}
         </ul>
 
-        <div
-          className={cx(
-            "reveal mt-10 flex flex-col items-center gap-1 rounded-2xl border border-brand/30 bg-brand/5 px-6 py-5 text-center",
-          )}
-        >
-          <p className="font-semibold text-brand">
-            {TRIAL_DAYS} días de TapGo Smart gratis al comprar tu placa
-          </p>
-          <p className="text-sm text-muted">
-            Probá analytics, contenido dinámico y reportes sin costo antes de decidir.
-          </p>
-        </div>
+        <p className="reveal mt-10 text-center text-sm text-muted">
+          Empezá desde <strong className="font-semibold text-foreground">₡9.900</strong> con tu
+          primera placa TapGo. Después, mantené tu plataforma desde{" "}
+          <strong className="font-semibold text-foreground">₡1.990/mes</strong>. Precios en
+          colones costarricenses.
+        </p>
 
-        <div className="reveal mt-8 flex flex-col items-center gap-4 text-center">
-          <p className="max-w-xl text-sm text-muted">
-            Mientras más placas comprás, menor es el precio por unidad. Mirá
-            la tabla completa y los adicionales en la página de precios.
-          </p>
+        <div className="reveal mt-6 flex flex-col items-center gap-4 text-center">
           <LinkButton href="/precios" variant="primary">
             Ver planes completos
           </LinkButton>

@@ -56,8 +56,23 @@
   --info-soft: #e0f2fe;
 }
 
+/*
+ * Tema oscuro: se aplica en dos casos que deben ganar siempre que coincidan
+ * —nunca "el último que se declare gana por accidente":
+ *
+ * 1. `prefers-color-scheme: dark` sin elección manual (guardia
+ *    `:not([data-theme="light"])`, para que una elección manual de tema
+ *    claro no se pise por el sistema oscuro).
+ * 2. `[data-theme="dark"]`, la elección manual guardada en localStorage por
+ *    `ThemeToggle` (ver `src/components/theme-toggle.tsx`), que debe ganarle
+ *    al sistema en cualquier dirección.
+ *
+ * Las declaraciones se repiten en vez de compartirse porque un selector de
+ * atributo y una media query no pueden ir en el mismo bloque sin un
+ * preprocesador; el costo es ~20 líneas duplicadas, no una hoja entera.
+ */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --background: #0b1220;
     --surface: #111a2b;
     --surface-muted: #172136;
@@ -84,17 +99,84 @@
     --info-soft: #10263c;
   }
 
-  /*
-   * `logo.png` trae el nombre "TapGoCR" en navy sólido, pensado para fondos
-   * claros. En modo oscuro del sistema esa combinación pierde casi todo el
-   * contraste contra la superficie oscura del header — se fuerza a blanco
-   * con el mismo filtro que usa `BrandWordmark({ light: true })` para el
-   * header del home, que ya lo aplica a mano porque ahí SIEMPRE hace falta
-   * (flota sobre una foto oscura, sin importar el tema del sistema).
-   */
-  .brand-logo {
+  :root:not([data-theme="light"]) .brand-logo {
     filter: brightness(0) invert(1);
   }
+}
+
+:root[data-theme="dark"] {
+  --background: #0b1220;
+  --surface: #111a2b;
+  --surface-muted: #172136;
+  --foreground: #e8eef7;
+  --muted: #94a3b8;
+  --border: #243149;
+
+  --brand: var(--brand-500);
+  --brand-strong: var(--brand-400);
+  --brand-contrast: #04201d;
+
+  --accent: #fbbf24;
+  --accent-strong: #f59e0b;
+  --accent-contrast: #1c1401;
+  --accent-soft: #3a2a08;
+
+  --success: #4ade80;
+  --success-soft: #14321f;
+  --warning: #fbbf24;
+  --warning-soft: #3a2a08;
+  --danger: #f87171;
+  --danger-soft: #3d1618;
+  --info-soft: #10263c;
+}
+
+:root[data-theme="dark"] .brand-logo {
+  filter: brightness(0) invert(1);
+}
+
+/*
+ * Swap del logo del header por tema (`HeaderLogo` en `src/components/brand.tsx`).
+ * Ambas imágenes están siempre en el DOM; solo una es visible por vez. Se
+ * evita `display: none` en el elemento oculto y se usa una posición
+ * absoluta con visibilidad, así el layout no colapsa y no hay salto de
+ * tamaño mientras carga la que corresponde.
+ */
+.theme-logo-dark {
+  opacity: 0;
+  visibility: hidden;
+}
+
+:root[data-theme="dark"] .theme-logo-light {
+  opacity: 0;
+  visibility: hidden;
+}
+
+:root[data-theme="dark"] .theme-logo-dark {
+  opacity: 1;
+  visibility: visible;
+}
+
+/*
+ * Transición suave del tema, acotada a las propiedades visuales que cambian
+ * de valor entre paletas — nunca `transition: all`, que animaría layout y
+ * geometría además de color.
+ */
+body,
+header,
+footer,
+button,
+a,
+input,
+textarea,
+select,
+svg {
+  transition:
+    background-color 240ms ease,
+    color 240ms ease,
+    border-color 240ms ease,
+    box-shadow 240ms ease,
+    fill 240ms ease,
+    stroke 240ms ease;
 }
 
 
@@ -157,13 +239,20 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     /* Sobre fondo oscuro una sombra negra no se ve: se profundiza el alfa. */
     --shadow-xs: 0 1px 2px -1px rgb(0 0 0 / 0.5);
     --shadow-sm: 0 1px 2px -1px rgb(0 0 0 / 0.5), 0 2px 8px -4px rgb(0 0 0 / 0.45);
     --shadow-md: 0 2px 4px -2px rgb(0 0 0 / 0.5), 0 8px 24px -12px rgb(0 0 0 / 0.6);
     --shadow-lg: 0 4px 8px -4px rgb(0 0 0 / 0.55), 0 20px 48px -24px rgb(0 0 0 / 0.7);
   }
+}
+
+:root[data-theme="dark"] {
+  --shadow-xs: 0 1px 2px -1px rgb(0 0 0 / 0.5);
+  --shadow-sm: 0 1px 2px -1px rgb(0 0 0 / 0.5), 0 2px 8px -4px rgb(0 0 0 / 0.45);
+  --shadow-md: 0 2px 4px -2px rgb(0 0 0 / 0.5), 0 8px 24px -12px rgb(0 0 0 / 0.6);
+  --shadow-lg: 0 4px 8px -4px rgb(0 0 0 / 0.55), 0 20px 48px -24px rgb(0 0 0 / 0.7);
 }
 
 @theme inline {
@@ -723,6 +812,77 @@ html.force-motion .marquee-track {
 }
 
 /* ---------------------------------------------------------------------------
+ * Hero de la home (`HeroSection`).
+ *
+ * A diferencia de `.on-dark` (que fuerza oscuro siempre, para secciones que
+ * son oscuras por diseño en los dos temas), el hero SÍ tiene que responder al
+ * switch: es una foto con overlay, no un bloque de color fijo. Por eso el
+ * oscurecimiento es condicional a `[data-theme="dark"]` — bajo tema claro no
+ * se toca nada y el hero hereda los tokens claros normales de `:root`
+ * (`--foreground` navy, `--muted` gris azulado), que ya son exactamente lo
+ * que pide un hero premium en claro sin duplicar valores.
+ *
+ * Es un componente de servidor (no reacciona a un evento de React al tocar el
+ * switch), así que todo esto tiene que resolverse con CSS puro contra el
+ * atributo del `<html>` — nunca con una clase que dependa de un re-render.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .marketing-hero {
+    --surface: #101b2d;
+    --surface-muted: #16233a;
+    --foreground: #eaf1fa;
+    --muted: #92a5bd;
+    --border: #26364f;
+    --brand: var(--brand-400);
+    --brand-strong: var(--brand-200);
+    --brand-contrast: #04201d;
+    color: var(--foreground);
+  }
+}
+
+:root[data-theme="dark"] .marketing-hero {
+  --surface: #101b2d;
+  --surface-muted: #16233a;
+  --foreground: #eaf1fa;
+  --muted: #92a5bd;
+  --border: #26364f;
+  --brand: var(--brand-400);
+  --brand-strong: var(--brand-200);
+  --brand-contrast: #04201d;
+  color: var(--foreground);
+}
+
+/*
+ * Los dos degradados conviven siempre en el DOM (`hero-section.tsx`) y solo
+ * cambia cuál se ve — nunca se recalcula un gradiente por JS. `opacity` es
+ * la única propiedad que se anima acá, nunca `background` (interpolar un
+ * gradiente es carísimo y además no está en la lista de propiedades
+ * permitidas). La fotografía de base no lleva ninguna de estas dos clases:
+ * queda completamente estable entre temas, solo cambia lo que va encima.
+ */
+.hero-overlay-dark,
+.hero-overlay-light {
+  transition: opacity 240ms ease;
+  pointer-events: none;
+}
+
+.hero-overlay-dark {
+  opacity: 1;
+}
+
+.hero-overlay-light {
+  opacity: 0;
+}
+
+:root[data-theme="light"] .hero-overlay-dark {
+  opacity: 0;
+}
+
+:root[data-theme="light"] .hero-overlay-light {
+  opacity: 1;
+}
+
+/* ---------------------------------------------------------------------------
  * Efectos ligados al scroll.
  * ------------------------------------------------------------------------ */
 
@@ -954,4 +1114,27 @@ section[id] {
 
 .animate-landing-in-delay-2 {
   animation-delay: 0.14s;
+}
+
+/* ---------------------------------------------------------------------------
+ * "TAP → GO" (home). Se apaga sola con la regla global de
+ * prefers-reduced-motion de más arriba — no hace falta repetir la condición.
+ */
+@keyframes tapgo-pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+
+.tapgo-pulse {
+  animation: tapgo-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes tapgo-arrive {
+  0% { transform: scale(0.94); opacity: 0.6; }
+  60% { transform: scale(1.03); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.tapgo-arrive {
+  animation: tapgo-arrive 1.6s ease-in-out infinite;
 }

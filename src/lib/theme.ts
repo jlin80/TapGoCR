@@ -111,12 +111,30 @@ const DEFAULT_ACCENT: Record<LandingTheme, string> = {
   BOUTIQUE: "#8a7a5c",
 };
 
+/** Para catálogos/preview administrativos (`/app/templates`) — nunca para la landing en sí, que usa `landingThemeStyle`. */
+export const THEME_SWATCHES: Record<LandingTheme, { surface: string; text: string; accent: string }> =
+  Object.fromEntries(
+    Object.entries(BASE).map(([theme, tokens]) => [
+      theme,
+      { surface: tokens.surface, text: tokens.text, accent: DEFAULT_ACCENT[theme as LandingTheme] },
+    ]),
+  ) as Record<LandingTheme, { surface: string; text: string; accent: string }>;
+
 export const THEME_LABELS: Record<LandingTheme, string> = {
   MINIMAL: "Minimal — claro y limpio",
   TROPICAL: "Tropical — cálido, fotos grandes",
   ELEGANTE: "Elegante — oscuro y sofisticado",
   VIBRANTE: "Vibrante — colores fuertes",
   BOUTIQUE: "Boutique — editorial, hotelero",
+};
+
+/** Descripción corta de tres palabras, para el catálogo de `/app/templates`. */
+export const THEME_TAGLINES: Record<LandingTheme, string> = {
+  MINIMAL: "Simple · Moderno",
+  TROPICAL: "Natural · Local · Único",
+  ELEGANTE: "Sofisticado · Atemporal",
+  VIBRANTE: "Colorido · Dinámico",
+  BOUTIQUE: "Premium · Exclusivo",
 };
 
 export function landingThemeStyle(

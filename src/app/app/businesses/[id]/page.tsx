@@ -36,6 +36,7 @@ export default async function BusinessDetailPage({
         slug: true,
         description: true,
         category: true,
+        industry: true,
         coverUrl: true,
         brandColor: true,
         accentColor: true,

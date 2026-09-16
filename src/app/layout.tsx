@@ -64,12 +64,46 @@ function organizationJsonLd() {
   };
 }
 
+/**
+ * Resuelve el tema ANTES de que React hidrate, para no pintar un tema y
+ * corregirlo un instante después (el "flash" de tema incorrecto).
+ *
+ * Orden: elección guardada → preferencia del sistema → oscuro por defecto.
+ * Se corre como script inline bloqueante en el <head>, no en un `useEffect`:
+ * un efecto se ejecuta después del primer pintado, que es exactamente el
+ * momento que hay que evitar.
+ */
+const THEME_INIT_SCRIPT = `
+(function () {
+  try {
+    var stored = localStorage.getItem("tapgocr-theme");
+    var theme = stored === "light" || stored === "dark"
+      ? stored
+      : window.matchMedia("(prefers-color-scheme: light)").matches
+        ? "light"
+        : "dark";
+    document.documentElement.setAttribute("data-theme", theme);
+  } catch (e) {
+    document.documentElement.setAttribute("data-theme", "dark");
+  }
+})();
+`;
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="es"
       className={`h-full antialiased ${display.variable} ${body.variable}`}
+      // El script del <head> fija `data-theme` antes de que React hidrate,
+      // así que el HTML del servidor (que no puede saber el tema del
+      // visitante) y el del cliente difieren en ese único atributo a
+      // propósito. Es el escape hatch que documenta React para este caso
+      // exacto, no una forma de ocultar un bug real.
+      suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className="flex min-h-full flex-col">
         <script
           type="application/ld+json"

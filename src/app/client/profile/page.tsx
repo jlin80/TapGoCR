@@ -73,36 +73,52 @@ export default async function ClientProfilePage() {
       />
 
       <div className="flex flex-col gap-8">
-        {previewCode ? (
+        <section id="vista-previa" className="scroll-mt-20">
+          <h2 className="mb-3 text-lg font-semibold">Vista previa</h2>
           <Card>
-            <p className="text-sm">
-              Tu página:{" "}
-              <a
-                href={`/t/${previewCode}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium text-brand underline underline-offset-2"
-              >
+            {previewCode ? (
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-muted">
+                  Es exactamente lo que ve tu cliente al escanear.
+                </p>
+                <a
+                  href={`/t/${previewCode}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="tap-target inline-flex items-center justify-center rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-contrast transition-colors hover:bg-brand-strong"
+                >
+                  Ver mi página →
+                </a>
+              </div>
+            ) : (
+              <p className="text-sm text-muted">
+                Todavía no tenés una placa activa para previsualizar tu página.
+              </p>
+            )}
+            {previewCode ? (
+              <p className="mt-3 truncate rounded-lg bg-surface-muted px-3 py-2 text-xs text-muted">
                 {tagUrl(previewCode)}
-              </a>
-            </p>
+              </p>
+            ) : null}
           </Card>
-        ) : null}
+        </section>
 
-        <section>
-          <h2 className="mb-3 text-lg font-semibold">Información</h2>
-          <Card>
-            <ActionForm action={updatePublicProfile} submitLabel="Guardar cambios">
-              <input type="hidden" name="businessId" value={business.id} />
+        {/*
+          Un solo `<ActionForm>` (un solo "Guardar cambios", una sola
+          validación de `updatePublicProfile`) pero dos secciones ancladas:
+          el dashboard llevaba "Administrar enlaces" y "Cambiar apariencia"
+          exactamente al mismo lugar, sin distinción. Ahora cada accceso
+          rápido cae en su propio bloque de esta misma página.
+        */}
+        <ActionForm action={updatePublicProfile} submitLabel="Guardar cambios">
+          <input type="hidden" name="businessId" value={business.id} />
 
+          <section id="informacion" className="scroll-mt-20">
+            <h2 className="mb-3 text-lg font-semibold">Información</h2>
+            <Card>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Nombre del negocio">
-                  <Input
-                    name="name"
-                    required
-                    maxLength={120}
-                    defaultValue={business.name}
-                  />
+                  <Input name="name" required maxLength={120} defaultValue={business.name} />
                 </Field>
 
                 <Field label="Categoría" hint="Ejemplo: Restaurante, Cafetería, Barbería">
@@ -124,83 +140,102 @@ export default async function ClientProfilePage() {
                     />
                   </Field>
                 </div>
-
-                <Field label="Logo (URL)" hint="Cuadrado, mínimo 200×200 px">
-                  <Input
-                    name="logoUrl"
-                    type="url"
-                    maxLength={2048}
-                    defaultValue={business.logoUrl ?? ""}
-                    placeholder="https://…/logo.png"
-                  />
-                </Field>
-
-                <Field label="Portada (URL)" hint="Horizontal, proporción 16:9">
-                  <Input
-                    name="coverUrl"
-                    type="url"
-                    maxLength={2048}
-                    defaultValue={business.coverUrl ?? ""}
-                    placeholder="https://…/portada.jpg"
-                  />
-                </Field>
-
-                <Field label="Color principal" hint="Hexadecimal, por ejemplo #c1121f">
-                  <Input
-                    name="brandColor"
-                    maxLength={7}
-                    pattern="#[0-9a-fA-F]{6}"
-                    defaultValue={business.brandColor ?? ""}
-                    placeholder="#0d9488"
-                  />
-                </Field>
-
-                <Field
-                  label="Color secundario"
-                  hint="Opcional. Se usa al pulsar un botón."
-                >
-                  <Input
-                    name="accentColor"
-                    maxLength={7}
-                    pattern="#[0-9a-fA-F]{6}"
-                    defaultValue={business.accentColor ?? ""}
-                    placeholder="#0f766e"
-                  />
-                </Field>
-
-                <div className="sm:col-span-2">
-                  <Field
-                    label="Tema"
-                    hint="Cambia tipografía, formas y espaciado de tu página. El logo y los colores se mantienen."
-                  >
-                    <Select name="landingTheme" defaultValue={business.landingTheme}>
-                      {Object.values(LandingTheme).map((theme) => (
-                        <option key={theme} value={theme}>
-                          {THEME_LABELS[theme]}
-                        </option>
-                      ))}
-                    </Select>
-                  </Field>
-                </div>
-
-                <div className="sm:col-span-2">
-                  <Field
-                    label="Menú"
-                    hint="Con «enlace o PDF» el botón abre la URL del enlace de tipo Menú. Con «menú digital» abre la carta que cargás en TapGoCR."
-                  >
-                    <Select name="menuMode" defaultValue={business.menuMode}>
-                      <option value={MenuMode.LINK}>Enlace o PDF</option>
-                      <option value={MenuMode.NATIVE}>Menú digital de TapGoCR</option>
-                    </Select>
-                  </Field>
-                </div>
               </div>
-            </ActionForm>
-          </Card>
-        </section>
+            </Card>
+          </section>
 
-        <section>
-          <h2 className="mb-1 text-lg font-semibold">Imágenes</h2>
+          <section id="apariencia" className="mt-8 scroll-mt-20">
+            <h2 className="mb-1 text-lg font-semibold">Apariencia</h2>
+            <p className="mb-3 text-sm text-muted">
+              Plantilla, fotos y colores. El contenido (menú, enlaces) no cambia.
+            </p>
+            <Card>
+              <Field
+                label="Plantilla"
+                hint="Cambia tipografía, formas y espaciado de tu página. El logo y los colores se mantienen."
+              >
+                <Select name="landingTheme" defaultValue={business.landingTheme}>
+                  {Object.values(LandingTheme).map((theme) => (
+                    <option key={theme} value={theme}>
+                      {THEME_LABELS[theme]}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+
+              {/*
+                Progressive disclosure: lo que casi todos los negocios dejan
+                en su valor por defecto (colores manuales, URLs de imagen en
+                vez de subirlas, el modo del menú) queda colapsado. Nadie
+                tiene que entender "brandColor" para completar el formulario.
+              */}
+              <details className="mt-6 rounded-lg border border-border">
+                <summary className="tap-target cursor-pointer list-none rounded-lg px-4 py-3 text-sm font-medium select-none">
+                  Configuración avanzada
+                </summary>
+                <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2">
+                  <Field label="Logo (URL)" hint="Cuadrado, mínimo 200×200 px">
+                    <Input
+                      name="logoUrl"
+                      type="url"
+                      maxLength={2048}
+                      defaultValue={business.logoUrl ?? ""}
+                      placeholder="https://…/logo.png"
+                    />
+                  </Field>
+
+                  <Field label="Portada (URL)" hint="Horizontal, proporción 16:9">
+                    <Input
+                      name="coverUrl"
+                      type="url"
+                      maxLength={2048}
+                      defaultValue={business.coverUrl ?? ""}
+                      placeholder="https://…/portada.jpg"
+                    />
+                  </Field>
+
+                  <Field
+                    label="¿Usar los colores de tu marca?"
+                    hint="Opcional. Dejalo vacío para usar los colores de TapGo."
+                  >
+                    <Input
+                      name="brandColor"
+                      maxLength={7}
+                      pattern="#[0-9a-fA-F]{6}"
+                      defaultValue={business.brandColor ?? ""}
+                      placeholder="#0d9488"
+                    />
+                  </Field>
+
+                  <Field label="Color secundario" hint="Opcional. Se usa al pulsar un botón.">
+                    <Input
+                      name="accentColor"
+                      maxLength={7}
+                      pattern="#[0-9a-fA-F]{6}"
+                      defaultValue={business.accentColor ?? ""}
+                      placeholder="#0f766e"
+                    />
+                  </Field>
+
+                  <div className="sm:col-span-2">
+                    <Field
+                      label="Menú"
+                      hint="Con «enlace o PDF» el botón abre la URL del enlace de tipo Menú. Con «menú digital» abre la carta que cargás en TapGoCR."
+                    >
+                      <Select name="menuMode" defaultValue={business.menuMode}>
+                        <option value={MenuMode.LINK}>Enlace o PDF</option>
+                        <option value={MenuMode.NATIVE}>Menú digital de TapGoCR</option>
+                      </Select>
+                    </Field>
+                  </div>
+                </div>
+              </details>
+            </Card>
+          </section>
+        </ActionForm>
+
+        <section id="fotos" className="scroll-mt-20">
+          <h2 className="mb-1 text-lg font-semibold">Fotos</h2>
           <p className="mb-3 text-sm text-muted">
             Subí el archivo directo en vez de pegar una URL. Reemplaza a la que
             hubiera cargada arriba.
@@ -236,8 +271,8 @@ export default async function ClientProfilePage() {
           </div>
         </section>
 
-        <section>
-          <h2 className="mb-1 text-lg font-semibold">Botones</h2>
+        <section id="enlaces" className="scroll-mt-20">
+          <h2 className="mb-1 text-lg font-semibold">Acciones</h2>
           <p className="mb-3 text-sm text-muted">
             Solo aparecen los botones que tienen una URL configurada. Los de WhatsApp,
             llamada y cómo llegar se agregan solos cuando TapGoCR tiene esos datos

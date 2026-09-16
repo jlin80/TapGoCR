@@ -1,9 +1,10 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { BrandWordmark } from "@/components/brand";
+import { BrandWordmark, HeaderLogo } from "@/components/brand";
 import { LinkIcon } from "@/components/link-icon";
-import { CrossOriginLinkButton, cx } from "@/components/ui";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { CrossOriginLinkButton, cx, LinkButton } from "@/components/ui";
 import type { LinkType } from "@/generated/prisma/enums";
 
 /** Piezas visuales del sitio comercial. */
@@ -20,76 +21,54 @@ function anchor(id: string, home: boolean): string {
   return home ? `#${id}` : `/#${id}`;
 }
 
-/** Cabecera del sitio comercial. */
+/**
+ * Cabecera del sitio comercial.
+ *
+ * Los colores (texto, borde, logo, switch) siguen los mismos tokens de tema
+ * en el home que en cualquier otra página — nunca un valor fijo a "blanco
+ * porque flota sobre una foto oscura". Eso era válido cuando el hero era
+ * siempre oscuro; ahora que tiene un tratamiento claro real, forzar blanco
+ * dejaría el texto invisible sobre el overlay claro. Lo único que `home`
+ * seguye decidiendo es la opacidad de fondo: transparente flotando sobre el
+ * hero, más sólida en el resto de páginas.
+ */
 export function SiteHeader({ home = false }: { home?: boolean }) {
   return (
     <header
       className={cx(
-        "sticky top-0 z-20 backdrop-blur-xl",
-        // En el home flota sobre el hero oscuro: más transparente y sin
-        // borde propio, para que se sienta integrado a la foto en vez de
-        // "pegado encima". En el resto de páginas necesita más opacidad,
-        // porque debajo hay contenido variable, no una sola composición.
-        // Nota: NO se usa la clase utilitaria `.on-dark` acá porque esta
-        // fija un `background-color` sólido pensado para secciones de
-        // contenido, y pisaría la transparencia que necesita este header
-        // flotando sobre el hero. En su lugar, cada texto de abajo se
-        // colorea a mano según `home`.
-        home
-          ? "border-b border-white/10 bg-[#0F172A]/55"
-          : "border-b border-border bg-surface/75",
+        "sticky top-0 z-20 border-b border-border backdrop-blur-xl",
+        home ? "bg-background/55" : "bg-surface/75",
       )}
     >
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-5 py-3.5">
         <Link href="/" aria-label="Ir al inicio">
-          <BrandWordmark light={home} />
+          <HeaderLogo />
         </Link>
         <div className="flex items-center gap-1 sm:gap-2">
           <a
             href={anchor("como-funciona", home)}
-            className={cx(
-              "hidden rounded-lg px-3 py-2 text-sm font-medium transition-colors md:block",
-              home ? "text-white/75 hover:text-white" : "text-muted hover:text-foreground",
-            )}
+            className="hidden rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:text-foreground md:block"
           >
             Cómo funciona
           </a>
           <a
-            href={anchor("paquetes", home)}
-            className={cx(
-              "hidden rounded-lg px-3 py-2 text-sm font-medium transition-colors md:block",
-              home ? "text-white/75 hover:text-white" : "text-muted hover:text-foreground",
-            )}
-          >
-            Paquetes
-          </a>
-          <a
             href={anchor("soluciones", home)}
-            className={cx(
-              "hidden rounded-lg px-3 py-2 text-sm font-medium transition-colors lg:block",
-              home ? "text-white/75 hover:text-white" : "text-muted hover:text-foreground",
-            )}
+            className="hidden rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:text-foreground lg:block"
           >
             Soluciones
           </a>
+          <a
+            href={anchor("industrias", home)}
+            className="hidden rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:text-foreground lg:block"
+          >
+            Para negocios
+          </a>
           <Link
             href="/precios"
-            className={cx(
-              "hidden rounded-lg px-3 py-2 text-sm font-medium transition-colors md:block",
-              home ? "text-white/75 hover:text-white" : "text-muted hover:text-foreground",
-            )}
+            className="hidden rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:text-foreground md:block"
           >
             Precios
           </Link>
-          <a
-            href={anchor("faq", home)}
-            className={cx(
-              "hidden rounded-lg px-3 py-2 text-sm font-medium transition-colors lg:block",
-              home ? "text-white/75 hover:text-white" : "text-muted hover:text-foreground",
-            )}
-          >
-            FAQ
-          </a>
           {/*
             En pantallas angostas el botón del hero ya cubre el contacto, así
             que acá se prioriza el acceso al panel.
@@ -99,17 +78,14 @@ export function SiteHeader({ home = false }: { home?: boolean }) {
             Tailwind emita última en el CSS, no la última que se escriba.
           */}
           <span className="hidden sm:inline-flex">
-            <CrossOriginLinkButton href="/registro" variant="primary">
-              Probar TapGo
-            </CrossOriginLinkButton>
+            <LinkButton href={anchor("contacto", home)} variant="primary">
+              Quiero mi TapGo
+            </LinkButton>
           </span>
-          <CrossOriginLinkButton
-            href="/login"
-            variant="ghost"
-            className={home ? "text-white/90 hover:bg-white/10" : undefined}
-          >
+          <CrossOriginLinkButton href="/login" variant="ghost">
             Ingresar
           </CrossOriginLinkButton>
+          <ThemeToggle />
         </div>
       </div>
     </header>
@@ -124,15 +100,15 @@ export function SiteHeader({ home = false }: { home?: boolean }) {
  * esto nunca tapa un formulario ni un panel — aparece exactamente donde tiene
  * sentido un empujón final hacia la conversión.
  */
-function MobileStickyCta() {
+function MobileStickyCta({ home }: { home: boolean }) {
   return (
     <div
       className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface/95 p-3 backdrop-blur-xl sm:hidden"
       style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
     >
-      <CrossOriginLinkButton href="/registro" variant="primary" className="w-full justify-center">
-        Registrá tu negocio
-      </CrossOriginLinkButton>
+      <LinkButton href={anchor("contacto", home)} variant="primary" className="w-full justify-center">
+        Quiero mi TapGo
+      </LinkButton>
     </div>
   );
 }
@@ -141,7 +117,7 @@ function MobileStickyCta() {
 export function SiteFooter({ home = false }: { home?: boolean }) {
   return (
     <>
-      <MobileStickyCta />
+      <MobileStickyCta home={home} />
       <footer className="on-dark">
       {/* `pb-28` en mobile deja lugar para que el CTA fijo no tape estos enlaces. */}
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-8 px-5 pt-14 pb-28 text-sm text-muted sm:pb-14">

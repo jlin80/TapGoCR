@@ -5,11 +5,35 @@ import { headers } from "next/headers";
 
 import type { ActionState } from "@/lib/action-state";
 import { requireRoot } from "@/lib/authz";
+import type { Industry } from "@/generated/prisma/enums";
+import { INDUSTRY_LABELS } from "@/lib/industry-labels";
 import { emitContactLead } from "@/lib/notifications/dispatch";
 import { prisma } from "@/lib/prisma";
 import { limitPublicSubmission } from "@/lib/public-rate-limit";
 import { extractClientIp, hashIp } from "@/lib/request-info";
 import { contactSchema, firstIssue, formValues, leadUpdateSchema } from "@/lib/validation";
+
+/**
+ * El camino corto de venta (hero, CTA final) solo pide rubro + objetivo, sin
+ * mensaje libre. Acá se arma un mensaje legible con esos dos datos para que
+ * `ContactLead.message` (obligatorio en la base) nunca quede vacío, y para
+ * que ROOT vea en Discord/el panel de qué se trata sin un campo aparte.
+ */
+function buildMessage(parsed: {
+  message?: string | null;
+  industry?: Industry;
+  goal?: string | null;
+}): string {
+  if (parsed.message) return parsed.message;
+
+  const parts: string[] = [];
+  if (parsed.industry) parts.push(`Rubro: ${INDUSTRY_LABELS[parsed.industry]}.`);
+  if (parsed.goal) parts.push(`Quiere conseguir: ${parsed.goal}.`);
+
+  return parts.length > 0
+    ? parts.join(" ")
+    : "Quiere información sobre TapGoCR.";
+}
 
 /**
  * Envíos permitidos por dirección IP y por hora.
@@ -62,6 +86,8 @@ export async function submitContact(
     };
   }
 
+  const message = buildMessage(parsed.data);
+
   let lead: { id: string };
   try {
     lead = await prisma.contactLead.create({
@@ -70,7 +96,7 @@ export async function submitContact(
         email: parsed.data.email,
         phone: parsed.data.phone,
         businessName: parsed.data.businessName,
-        message: parsed.data.message,
+        message,
         ipHash,
       },
       select: { id: true },
@@ -88,7 +114,7 @@ export async function submitContact(
     name: parsed.data.name,
     email: parsed.data.email,
     businessName: parsed.data.businessName,
-    messagePreview: parsed.data.message.slice(0, 280),
+    messagePreview: message.slice(0, 280),
   });
 
   revalidatePath("/app/leads");

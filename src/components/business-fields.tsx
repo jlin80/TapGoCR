@@ -1,5 +1,6 @@
 import { Checkbox, Field, FieldWide, Fieldset, Input, Select, Textarea } from "@/components/ui";
-import { LandingTheme, Plan } from "@/generated/prisma/enums";
+import { Industry, LandingTheme, Plan } from "@/generated/prisma/enums";
+import { INDUSTRY_LABELS } from "@/lib/industry-labels";
 import { PLAN_LABELS, PLAN_TAG_LIMITS } from "@/lib/plans";
 import { THEME_LABELS } from "@/lib/theme";
 
@@ -22,6 +23,7 @@ export type BusinessFormValues = {
   plan: Plan;
   includedTagsOverride: number | null;
   landingTheme: LandingTheme;
+  industry: Industry | null;
 };
 
 /**
@@ -65,6 +67,17 @@ export function BusinessFields({ values }: { values?: BusinessFormValues }) {
             defaultValue={values?.category ?? ""}
             placeholder="Restaurante"
           />
+        </Field>
+
+        <Field label="Rubro" hint="El que eligió al registrarse. Influye en qué se le sugiere en el panel.">
+          <Select name="industry" defaultValue={values?.industry ?? ""}>
+            <option value="">Sin especificar</option>
+            {Object.values(Industry).map((industry) => (
+              <option key={industry} value={industry}>
+                {INDUSTRY_LABELS[industry]}
+              </option>
+            ))}
+          </Select>
         </Field>
 
         <FieldWide>
@@ -205,14 +218,14 @@ export function BusinessFields({ values }: { values?: BusinessFormValues }) {
         <FieldWide>
           <Field
             label="Placas incluidas (override)"
-            hint={`Dejar vacío usa el tope estándar del plan. CHAIN no tiene tope estándar (${PLAN_TAG_LIMITS.LOCAL} en Local, ${PLAN_TAG_LIMITS.BUSINESS} en Business).`}
+            hint={`Dejar vacío usa el tope estándar del plan (${PLAN_TAG_LIMITS.LOCAL} en Starter, ${PLAN_TAG_LIMITS.BUSINESS} en Business, ${PLAN_TAG_LIMITS.CHAIN} en Pro). Usalo para contratos a medida.`}
           >
             <Input
               name="includedTagsOverride"
               type="number"
               min={0}
               defaultValue={values?.includedTagsOverride ?? ""}
-              placeholder="A medida (ej. contratos Chain)"
+              placeholder="A medida (ej. contratos personalizados)"
             />
           </Field>
         </FieldWide>

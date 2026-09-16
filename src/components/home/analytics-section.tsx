@@ -30,8 +30,8 @@ export function AnalyticsSection() {
       <div className="mx-auto max-w-5xl px-5 py-20 sm:py-24 lg:py-28">
         <SectionHeading
           eyebrow="Analytics"
-          title="Sabé qué hacen tus clientes."
-          description="No solo sabés cuántas personas interactuaron. Podés ver qué buscan y qué acciones generan más interés."
+          title="¿Querés saber qué está funcionando?"
+          description="Tu interacción física también puede generar información: qué buscan tus clientes y qué acciones generan más interés."
         />
 
         <div className="reveal mt-12 overflow-hidden rounded-3xl border border-border bg-surface shadow-xl sm:mt-16">

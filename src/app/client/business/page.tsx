@@ -5,6 +5,7 @@ import { LinksManager } from "@/components/links-manager";
 import { NoBusinessAssigned } from "@/components/no-business";
 import { Card, PageHeader } from "@/components/ui";
 import { getClientContext } from "@/lib/client-context";
+import { INDUSTRY_LABELS } from "@/lib/industry-labels";
 import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = { title: "Mi negocio" };
@@ -40,6 +41,10 @@ export default async function ClientBusinessPage() {
           <Card>
             <dl className="grid gap-4 sm:grid-cols-2">
               <Detail label="Nombre" value={business.name} />
+              <Detail
+                label="Rubro"
+                value={business.industry ? INDUSTRY_LABELS[business.industry] : null}
+              />
               <Detail label="Descripción" value={business.description} />
               <Detail label="Teléfono" value={business.phone} />
               <Detail label="WhatsApp" value={business.whatsapp} />

@@ -8,7 +8,7 @@ import { ScanEventType } from "@/generated/prisma/enums";
 import { placaQuotaFor } from "@/lib/chips";
 import { getClientContext } from "@/lib/client-context";
 import { tagUrl } from "@/lib/config";
-import { ADDITIONAL_TAG_PRICE_LABEL, PLAN_LABELS, nextPlanUp } from "@/lib/plans";
+import { additionalTagPriceLabel, PLAN_LABELS, nextPlanUp } from "@/lib/plans";
 import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = { title: "Mis tags" };
@@ -122,7 +122,7 @@ function AddTagCard({
     <Card className="mt-8 max-w-xl">
       <h3 className="font-medium">Agregar una placa</h3>
       <p className="mt-1 text-sm text-muted">
-        Precio: <span className="font-medium text-foreground">{ADDITIONAL_TAG_PRICE_LABEL}</span>.
+        Precio: <span className="font-medium text-foreground">{additionalTagPriceLabel(plan)}</span>.
         No cambia tu cuota mensual por sí sola.
       </p>
 

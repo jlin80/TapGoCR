@@ -31,11 +31,11 @@ const AUDIENCES = [
  */
 export function AudiencesSection() {
   return (
-    <section id="soluciones" className="border-b border-border bg-surface-muted py-20 sm:py-24 lg:py-28">
+    <section id="industrias" className="border-b border-border bg-surface-muted py-20 sm:py-24 lg:py-28">
       <div className="mx-auto max-w-4xl px-5">
         <SectionHeading
-          eyebrow="Para quién"
-          title="Pensado para negocios que atienden gente"
+          eyebrow="Casos de uso"
+          title="Un TapGo para cada negocio."
         />
       </div>
       <div className="mt-12 sm:mt-16">

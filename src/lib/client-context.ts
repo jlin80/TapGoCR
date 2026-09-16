@@ -1,4 +1,4 @@
-import type { Plan } from "@/generated/prisma/enums";
+import type { Industry, Plan } from "@/generated/prisma/enums";
 import { primaryBusinessId, requireClient, type SessionUser } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 
@@ -8,6 +8,7 @@ export type ClientContext = {
     id: string;
     name: string;
     description: string | null;
+    industry: Industry | null;
     address: string | null;
     phone: string | null;
     whatsapp: string | null;
@@ -38,6 +39,7 @@ export async function getClientContext(): Promise<ClientContext> {
       id: true,
       name: true,
       description: true,
+      industry: true,
       address: true,
       phone: true,
       whatsapp: true,

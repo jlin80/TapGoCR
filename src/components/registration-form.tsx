@@ -13,8 +13,15 @@ import {
   Select,
   Textarea,
 } from "@/components/ui";
+import { Industry } from "@/generated/prisma/enums";
 import { EMPTY_STATE, type ActionState } from "@/lib/action-state";
+import { INDUSTRY_ICONS, INDUSTRY_LABELS } from "@/lib/industry-labels";
 import { submitRegistration } from "@/server/registration-actions";
+
+/** El mismo `Industry` que usa `Business.industry`: elegir acá y sugerir después en el panel es el mismo dato, no dos. */
+const INDUSTRY_OPTIONS: Array<{ value: Industry; label: string; icon: string }> = Object.values(
+  Industry,
+).map((value) => ({ value, label: INDUSTRY_LABELS[value], icon: INDUSTRY_ICONS[value] }));
 
 const PROVINCES = [
   "San José",
@@ -49,7 +56,8 @@ export function RegistrationForm() {
     submitRegistration,
     EMPTY_STATE,
   );
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<0 | 1 | 2>(0);
+  const [industry, setIndustry] = useState<Industry | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
   if (state.success) {
@@ -106,6 +114,39 @@ export function RegistrationForm() {
   return (
     <form ref={formRef} action={action} className="flex flex-col gap-6">
       <Steps current={step} />
+
+      {industry ? <input type="hidden" name="industry" value={industry} /> : null}
+
+      <Card className={step === 0 ? undefined : "hidden"}>
+        <h2 className="mb-1 text-lg font-semibold">¿Qué tipo de negocio tenés?</h2>
+        <p className="mb-5 text-sm text-muted">
+          Así te sugerimos las secciones y el estilo que mejor le quedan a tu negocio.
+        </p>
+
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {INDUSTRY_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              aria-pressed={industry === option.value}
+              onClick={() => {
+                setIndustry(option.value);
+                setStep(1);
+              }}
+              className={`tap-target flex flex-col items-center gap-2 rounded-2xl border p-4 text-center transition-colors ${
+                industry === option.value
+                  ? "border-brand bg-brand/5"
+                  : "border-border bg-surface hover:border-brand/40"
+              }`}
+            >
+              <span aria-hidden="true" className="text-2xl">
+                {option.icon}
+              </span>
+              <span className="text-sm font-medium">{option.label}</span>
+            </button>
+          ))}
+        </div>
+      </Card>
 
       <Card className={step === 1 ? undefined : "hidden"}>
         <h2 className="mb-1 text-lg font-semibold">Tus datos</h2>
@@ -168,7 +209,10 @@ export function RegistrationForm() {
           </Field>
         </div>
 
-        <div className="mt-6 flex justify-end">
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+          <Button type="button" variant="secondary" onClick={() => setStep(0)}>
+            Volver
+          </Button>
           <Button type="button" onClick={goToStepTwo} className="px-6 py-2.5">
             Continuar
           </Button>
@@ -305,7 +349,7 @@ export function RegistrationForm() {
           </Button>
 
           <Button type="submit" disabled={pending} className="px-6 py-2.5">
-            {pending ? "Enviando…" : "Enviar solicitud"}
+            {pending ? "Creando cuenta…" : "Crear mi cuenta"}
           </Button>
         </div>
       </Card>
@@ -313,8 +357,9 @@ export function RegistrationForm() {
   );
 }
 
-function Steps({ current }: { current: 1 | 2 }) {
+function Steps({ current }: { current: 0 | 1 | 2 }) {
   const steps = [
+    { number: 0 as const, label: "Tu rubro" },
     { number: 1 as const, label: "Tus datos" },
     { number: 2 as const, label: "Tu negocio" },
   ];
@@ -340,7 +385,7 @@ function Steps({ current }: { current: 1 | 2 }) {
                     : "bg-surface-muted text-muted"
                 }`}
               >
-                {step.number}
+                {index + 1}
               </span>
               {step.label}
             </span>

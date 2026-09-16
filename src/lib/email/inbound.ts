@@ -18,6 +18,8 @@ export type InboundEmail = {
   messageId: string | null;
   uid: number;
   from: string;
+  /** Nombre para mostrar del remitente, cuando el correo lo trae (ej. "Ana Pérez"). */
+  fromName: string | null;
   subject: string;
   /** Primeros ~280 caracteres del cuerpo en texto plano, ya sin HTML. */
   preview: string;
@@ -80,6 +82,7 @@ export async function fetchUnseenEmails(
           messageId: parsed.messageId ?? null,
           uid: message.uid,
           from: parsed.from?.value[0]?.address ?? message.envelope?.from?.[0]?.address ?? "desconocido",
+          fromName: parsed.from?.value[0]?.name || null,
           subject: parsed.subject ?? "(sin asunto)",
           preview: buildPreview(parsed.text, parsed.html),
           receivedAt: parsed.date ?? new Date(),

@@ -91,6 +91,7 @@ async function main() {
           | "support@tapgocr.com"
           | "sales@tapgocr.com",
         from: email.from,
+        fromName: email.fromName,
         subject: email.subject,
         preview: email.preview,
         clientName: client?.name ?? null,

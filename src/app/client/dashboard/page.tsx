@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { CopyButton } from "@/components/copy-button";
 import { NoBusinessAssigned } from "@/components/no-business";
 import { OnboardingChecklist } from "@/components/onboarding-checklist";
 import { QuotaBadge, QuotaBar, QuotaNotice } from "@/components/quota";
@@ -10,9 +11,20 @@ import { LinkType, MenuMode } from "@/generated/prisma/enums";
 import { getBusinessSummary } from "@/lib/analytics";
 import { placaQuotaFor } from "@/lib/chips";
 import { getClientContext } from "@/lib/client-context";
+import { tagUrl } from "@/lib/config";
 import { hasPublishedMenu } from "@/lib/menu";
 import { PLAN_LABELS, PLAN_TONES } from "@/lib/plans";
 import { prisma } from "@/lib/prisma";
+
+/** Accesos directos de "¿Qué querés hacer?" — mismas rutas que ya existían en el menú lateral. */
+const QUICK_ACTIONS = [
+  { href: "/client/menu", icon: "🍽️", label: "Editar menú" },
+  { href: "/client/profile#enlaces", icon: "🔗", label: "Administrar enlaces" },
+  { href: "/client/profile#apariencia", icon: "🎨", label: "Cambiar apariencia" },
+  { href: "/client/business", icon: "🏪", label: "Información del negocio" },
+  { href: "/client/analytics", icon: "📊", label: "Ver estadísticas" },
+  { href: "/client/tags", icon: "📱", label: "Mis placas" },
+] as const;
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -35,8 +47,10 @@ export default async function ClientDashboardPage() {
   const tags = await prisma.tag.findMany({
     where: { businessId: business.id },
     orderBy: { createdAt: "asc" },
-    select: { id: true, name: true, active: true },
+    select: { id: true, name: true, active: true, code: true },
   });
+
+  const activeTag = tags.find((tag) => tag.active) ?? null;
 
   // --- Puesta en marcha de la página pública --------------------------------
   // Cubre tanto al negocio dado de alta antes de que el registro pidiera estos
@@ -78,21 +92,24 @@ export default async function ClientDashboardPage() {
         una sola: cuánta gente escaneó hoy. Por eso esa cifra es el titular y no
         una tarjeta más en una rejilla de cuatro iguales.
       */}
-      <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="truncate text-[clamp(1.5rem,1.2rem+1vw,2rem)] font-semibold tracking-tight">
-            {business.name}
-          </h1>
-          {business.description ? (
-            <p className="mt-1 truncate text-muted">{business.description}</p>
-          ) : null}
-        </div>
-        <LinkButton href="/client/profile" variant="primary">
-          Editar mi página
-        </LinkButton>
+      {/*
+        Saludo + estado + accesos directos: lo primero que responde "¿cómo
+        está mi TapGo" y "¿qué puedo hacer ahora", antes de cualquier cifra.
+        Las estadísticas siguen abajo — no se perdió nada, solo dejaron de
+        ser lo primero que se ve.
+      */}
+      <header className="mb-8">
+        <h1 className="truncate text-[clamp(1.5rem,1.2rem+1vw,2rem)] font-semibold tracking-tight">
+          Hola, {business.name} 👋
+        </h1>
+        <p className="mt-1 flex items-center gap-2 text-muted">
+          <span
+            aria-hidden="true"
+            className={`size-2 rounded-full ${business.active ? "bg-success" : "bg-warning"}`}
+          />
+          Tu TapGo está {business.active ? "activo" : "desactivado temporalmente"}
+        </p>
       </header>
-
-      <QuotaNotice quota={quota} />
 
       {!business.active ? (
         <div className="mb-6 rounded-lg bg-warning-soft px-4 py-3 text-sm text-warning">
@@ -100,6 +117,55 @@ export default async function ClientDashboardPage() {
           Contactá al equipo de TapGoCR.
         </div>
       ) : null}
+
+      <section className="mb-8 grid gap-6 lg:grid-cols-[1fr_1.4fr]">
+        <Card>
+          <p className="stat-label">Tu TapGo</p>
+          <div className="mt-3 flex items-center gap-2">
+            <Badge tone={business.active ? "success" : "warning"}>
+              {business.active ? "Activo" : "Desactivado"}
+            </Badge>
+          </div>
+          {activeTag ? (
+            <>
+              <p className="mt-4 truncate rounded-lg bg-surface-muted px-3 py-2 text-sm text-muted">
+                {tagUrl(activeTag.code)}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <LinkButton href={tagUrl(activeTag.code)} target="_blank" rel="noopener noreferrer">
+                  Ver página
+                </LinkButton>
+                <CopyButton value={tagUrl(activeTag.code)} label="Copiar enlace" />
+              </div>
+            </>
+          ) : (
+            <p className="mt-4 text-sm text-muted">
+              Todavía no tenés una placa activa. El equipo de TapGoCR la instala y la
+              activa por vos.
+            </p>
+          )}
+        </Card>
+
+        <div>
+          <p className="stat-label mb-3">¿Qué querés hacer?</p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {QUICK_ACTIONS.map((action) => (
+              <Link
+                key={action.label}
+                href={action.href}
+                className="tap-target flex flex-col items-center gap-2 rounded-2xl border border-border bg-surface p-4 text-center transition-colors hover:border-brand/40 hover:bg-surface-muted"
+              >
+                <span aria-hidden="true" className="text-2xl">
+                  {action.icon}
+                </span>
+                <span className="text-sm font-medium">{action.label}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <QuotaNotice quota={quota} />
 
       <OnboardingChecklist
         state={{

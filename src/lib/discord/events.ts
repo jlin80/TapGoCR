@@ -184,14 +184,18 @@ export async function notifyContactLead(params: {
 
 /**
  * Correo entrante (info@/support@/sales@tapgocr.com) clasificado como
- * solicitud o consulta de cliente. Todavía no está conectado a nada real —
- * ver auditoría: no hay IMAP ni webhook de correo implementado. Queda listo
- * para cuando se arme la Fase de integración de email.
+ * solicitud o consulta de cliente, vía `scripts/check-inbound-email.ts`.
+ *
+ * Discord solo acepta http/https en los botones de un webhook (un botón con
+ * `mailto:` lo rechaza con 400), así que "Responder" va como campo de texto
+ * en vez de botón: no es clickeable en todos los clientes, pero muestra la
+ * dirección y el asunto listos para copiar sin abrir el correo entero.
  */
 export async function notifyInboundEmail(params: {
   eventId: string;
   department: "info@tapgocr.com" | "support@tapgocr.com" | "sales@tapgocr.com";
   from: string;
+  fromName?: string | null;
   subject: string;
   preview: string;
   clientName?: string | null;
@@ -202,6 +206,10 @@ export async function notifyInboundEmail(params: {
   if (params.mailboxUrl) buttons.push({ label: "📧 Abrir correo", url: params.mailboxUrl });
   if (params.clientUrl) buttons.push({ label: "👤 Ver cliente", url: params.clientUrl });
 
+  const senderLabel = params.fromName ? `${params.fromName} <${params.from}>` : params.from;
+  const replySubject = params.subject.startsWith("Re:") ? params.subject : `Re: ${params.subject}`;
+  const mailtoUrl = `mailto:${params.from}?subject=${encodeURIComponent(replySubject)}`;
+
   await notifyDiscord("INBOUND_EMAIL", {
     eventId: params.eventId,
     embed: {
@@ -209,9 +217,10 @@ export async function notifyInboundEmail(params: {
       color: COLOR.info,
       fields: [
         { name: "Departamento", value: params.department, inline: true },
-        { name: "De", value: params.from, inline: true },
+        { name: "De", value: senderLabel, inline: true },
         { name: "Cliente", value: params.clientName ?? "Cliente no identificado", inline: true },
         { name: "Asunto", value: params.subject, inline: false },
+        { name: "Responder", value: mailtoUrl, inline: false },
         { name: "Vista previa", value: params.preview, inline: false },
         { name: "Estado", value: "🔴 Pendiente", inline: true },
       ],

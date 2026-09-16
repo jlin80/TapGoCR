@@ -144,7 +144,7 @@ export const INDUSTRIES: Industry[] = [
     faq: [
       {
         q: "¿Sirve para varias sedes?",
-        a: "Sí: con el plan Chain cada sede tiene su propia página y sus propias placas, con analytics comparado entre sucursales.",
+        a: "Sí: con el plan Pro o una propuesta a medida, cada sede tiene su propia página y sus propias placas.",
       },
     ],
   },

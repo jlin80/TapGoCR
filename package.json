@@ -19,6 +19,7 @@
     "root:set": "tsx scripts/set-root.ts",
     "domains:notify": "tsx scripts/notify-domains.ts",
     "healthcheck": "tsx scripts/healthcheck.ts",
+    "plans:grandfather": "tsx scripts/grandfather-plan-limits.ts",
     "discord:activity": "tsx scripts/notify-activity.ts",
     "email:check": "tsx scripts/check-inbound-email.ts"
   },

@@ -16,11 +16,12 @@ const DESTINATIONS: Array<{ type: LinkType; label: string }> = [
   { type: LinkType.CUSTOM, label: "Lo que se te ocurra" },
 ];
 
+/** Mensajes de confianza cortos, justo debajo del CTA — reducen fricción sin competir con el título. */
 const TRUST_ITEMS: Array<{ label: string; path: string }> = [
-  { label: "Rápido", path: "M13 2 3 14h7l-1 8 10-12h-7l1-8Z" },
-  { label: "Seguro", path: "M12 2 4 5v6c0 5 3.4 8.7 8 9 4.6-.3 8-4 8-9V5l-8-3Z" },
-  { label: "Moderno", path: "M4 19V10M10 19V5M16 19v-7M22 19v-3" },
-  { label: "Hecho en Costa Rica", path: "M12 21c4-4.5 7-8.2 7-11.5A7 7 0 0 0 5 9.5C5 12.8 8 16.5 12 21Z" },
+  { label: "NFC + QR", path: "M13 2 3 14h7l-1 8 10-12h-7l1-8Z" },
+  { label: "Sin apps", path: "M7 3h10a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Zm3 15h4" },
+  { label: "Personalizado", path: "M12 2 4 5v6c0 5 3.4 8.7 8 9 4.6-.3 8-4 8-9V5l-8-3Z" },
+  { label: "Listo para usar", path: "m5 13 4 4 10-11" },
 ];
 
 /**
@@ -35,43 +36,72 @@ const TRUST_ITEMS: Array<{ label: string; path: string }> = [
 export function HeroSection() {
   return (
     <>
-      <section className="on-dark relative flex items-center overflow-hidden lg:min-h-screen">
+      <section className="marketing-hero relative flex items-center overflow-hidden lg:min-h-screen">
         <Image
           src="/brand/hero-restaurant.png"
           alt=""
           aria-hidden="true"
           fill
           priority
+          quality={90}
           sizes="100vw"
           className="object-cover object-[58%_52%] lg:object-[62%_42%]"
         />
 
-        {/* Fundido horizontal navy -> foto, solo en pantallas grandes. */}
+        {/*
+          Dos juegos de overlay, siempre los dos en el DOM — el CSS decide
+          cuál se ve según `[data-theme]` (ver globals.css). La foto de arriba
+          no lleva ninguna de estas clases: permanece idéntica entre temas,
+          solo cambia el tratamiento encima.
+        */}
         <div
           aria-hidden="true"
-          className="absolute inset-0 hidden lg:block"
+          className="hero-overlay-dark absolute inset-0 hidden lg:block"
           style={{
             background:
               "linear-gradient(90deg, #0F172A 0%, #0F172A 25%, rgba(15,23,42,.92) 42%, rgba(15,23,42,.55) 58%, rgba(15,23,42,.08) 75%, rgba(15,23,42,0) 88%)",
           }}
         />
-        {/* Radial sutil para separar el bloque de texto del fondo. */}
         <div
           aria-hidden="true"
-          className="absolute inset-0 hidden lg:block"
+          className="hero-overlay-dark absolute inset-0 hidden lg:block"
           style={{
             background:
               "radial-gradient(60% 55% at 22% 45%, rgba(15,23,42,.35) 0%, rgba(15,23,42,0) 70%)",
           }}
         />
-
-        {/* Overlay vertical en mobile/tablet: la foto se asoma arriba y se funde hacia el navy donde vive el texto. */}
         <div
           aria-hidden="true"
-          className="absolute inset-0 lg:hidden"
+          className="hero-overlay-dark absolute inset-0 lg:hidden"
           style={{
             background:
               "linear-gradient(180deg, rgba(15,23,42,.35) 0%, rgba(15,23,42,.55) 30%, rgba(15,23,42,.93) 52%, #0F172A 68%, #0F172A 100%)",
+          }}
+        />
+
+        {/* Misma composición en marfil/off-white, para el tema claro. */}
+        <div
+          aria-hidden="true"
+          className="hero-overlay-light absolute inset-0 hidden lg:block"
+          style={{
+            background:
+              "linear-gradient(90deg, #F6F3EC 0%, #F6F3EC 25%, rgba(246,243,236,.92) 42%, rgba(246,243,236,.6) 58%, rgba(246,243,236,.1) 75%, rgba(246,243,236,0) 88%)",
+          }}
+        />
+        <div
+          aria-hidden="true"
+          className="hero-overlay-light absolute inset-0 hidden lg:block"
+          style={{
+            background:
+              "radial-gradient(60% 55% at 22% 45%, rgba(246,243,236,.4) 0%, rgba(246,243,236,0) 70%)",
+          }}
+        />
+        <div
+          aria-hidden="true"
+          className="hero-overlay-light absolute inset-0 lg:hidden"
+          style={{
+            background:
+              "linear-gradient(180deg, rgba(246,243,236,.4) 0%, rgba(246,243,236,.6) 30%, rgba(246,243,236,.95) 52%, #F6F3EC 68%, #F6F3EC 100%)",
           }}
         />
 
@@ -80,19 +110,27 @@ export function HeroSection() {
             <h1 className="text-4xl font-semibold tracking-tighter text-balance sm:text-5xl lg:text-6xl">
               Tu negocio,
               <br />
-              <span className="text-brand">a un tap.</span>
+              <span className="text-brand">a un toque.</span>
             </h1>
 
             <p className="mt-5 max-w-md text-base text-muted text-pretty sm:mt-6 sm:text-lg">
-              Comprá tu placa una sola vez. Es tuya, sin mensualidad. Activá{" "}
-              <strong className="font-semibold text-foreground">TapGo Smart</strong>{" "}
-              cuando quieras convertirla en una herramienta inteligente, con
-              analytics y contenido que cambiás cuando querés.
+              Conectá a tus clientes con tu menú, WhatsApp, reseñas, redes y
+              mucho más.
+            </p>
+
+            <p className="mt-3 max-w-md text-base font-medium text-pretty sm:text-lg">
+              Vos elegís qué querés. Nosotros lo configuramos por vos.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3 sm:mt-10">
-              <CrossOriginLinkButton
-                href="/registro"
+              {/*
+                Camino principal de venta: contanos qué necesitás y armamos la
+                propuesta (sección de contacto, más abajo en la misma página)
+                — no un registro largo. "Crear mi cuenta" sigue disponible
+                como camino secundario para quien ya está listo.
+              */}
+              <LinkButton
+                href="#contacto"
                 variant="primary"
                 className="px-7 py-3.5 text-base shadow-xl shadow-brand/30"
               >
@@ -109,12 +147,18 @@ export function HeroSection() {
                 >
                   <path d="M4 10h12M11 5l5 5-5 5" />
                 </svg>
-              </CrossOriginLinkButton>
-
-              <LinkButton href="/precios" variant="secondary" className="px-7 py-3.5 text-base">
-                Ver planes
               </LinkButton>
+
+              <CrossOriginLinkButton href="/registro" variant="secondary" className="px-7 py-3.5 text-base">
+                Crear mi cuenta
+              </CrossOriginLinkButton>
             </div>
+
+            <p className="mt-4 text-sm text-muted">
+              Desde <strong className="font-semibold text-foreground">₡9.900</strong> de pago
+              inicial. Plataforma desde{" "}
+              <strong className="font-semibold text-foreground">₡1.990/mes</strong>.
+            </p>
 
             {/* Micro-indicadores de confianza: no compiten con el H1, van chicos y en una fila. */}
             <ul className="mt-10 flex flex-wrap gap-x-6 gap-y-3 sm:mt-12">
@@ -140,7 +184,7 @@ export function HeroSection() {
         </div>
       </section>
 
-      <section className="on-dark border-y border-border py-10">
+      <section className="border-y border-border bg-surface-muted py-10">
         <p className="mb-8 text-center text-sm font-semibold tracking-widest text-muted uppercase">
           Todo lo que puede abrir una placa
         </p>

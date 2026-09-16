@@ -2,12 +2,28 @@
 
 import { useActionState } from "react";
 
-import { Button, Field, FormError, Input, Textarea } from "@/components/ui";
+import { Button, Field, FormError, Input, Select, Textarea } from "@/components/ui";
+import { Industry } from "@/generated/prisma/enums";
 import { EMPTY_STATE } from "@/lib/action-state";
+import { INDUSTRY_LABELS } from "@/lib/industry-labels";
 import { submitContact } from "@/server/contact-actions";
 
+/** Mismas metas que el selector "¿Qué querés conseguir?" de la home — un solo lugar con la lista. */
+const GOALS = [
+  "Más reseñas",
+  "Más mensajes por WhatsApp",
+  "Compartir mi menú",
+  "Mostrar mis redes",
+  "Facilitar pagos",
+  "Tener varias acciones",
+  "Otra cosa",
+];
+
 /**
- * Formulario de contacto del sitio comercial.
+ * Formulario de contacto del sitio comercial — es el camino corto de venta:
+ * "Vos elegís qué querés, nosotros lo configuramos" no puede empezar con un
+ * formulario largo. Rubro y objetivo alcanzan para que el equipo prepare una
+ * propuesta; el mensaje libre queda como opcional, no como paso obligatorio.
  *
  * Al enviarse con éxito reemplaza el formulario por la confirmación, en lugar
  * de dejar los campos llenos invitando a mandar lo mismo otra vez.
@@ -46,17 +62,30 @@ export function ContactForm() {
       className="rounded-2xl border border-border bg-surface p-6 text-left shadow-sm sm:p-8"
     >
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Tu nombre">
-          <Input name="name" required maxLength={120} autoComplete="name" />
+        <Field label="¿Qué tipo de negocio tenés?">
+          <Select name="industry" defaultValue="">
+            <option value="">Elegí una opción</option>
+            {Object.values(Industry).map((industry) => (
+              <option key={industry} value={industry}>
+                {INDUSTRY_LABELS[industry]}
+              </option>
+            ))}
+          </Select>
         </Field>
 
-        <Field label="Nombre del negocio">
-          <Input
-            name="businessName"
-            maxLength={120}
-            autoComplete="organization"
-            placeholder="Opcional"
-          />
+        <Field label="¿Qué querés conseguir?">
+          <Select name="goal" defaultValue="">
+            <option value="">Elegí una opción</option>
+            {GOALS.map((goal) => (
+              <option key={goal} value={goal}>
+                {goal}
+              </option>
+            ))}
+          </Select>
+        </Field>
+
+        <Field label="Tu nombre">
+          <Input name="name" required maxLength={120} autoComplete="name" />
         </Field>
 
         <Field label="Correo">
@@ -69,25 +98,21 @@ export function ContactForm() {
           />
         </Field>
 
-        <Field label="Teléfono">
-          <Input
-            name="phone"
-            type="tel"
-            maxLength={40}
-            autoComplete="tel"
-            placeholder="Opcional"
-          />
+        <Field label="WhatsApp" hint="Opcional, si preferís que te escribamos ahí.">
+          <Input name="phone" type="tel" maxLength={40} autoComplete="tel" />
+        </Field>
+
+        <Field label="Nombre del negocio" hint="Opcional.">
+          <Input name="businessName" maxLength={120} autoComplete="organization" />
         </Field>
       </div>
 
       <div className="mt-4">
-        <Field label="¿Qué necesitás?">
+        <Field label="Contanos más (opcional)">
           <Textarea
             name="message"
-            required
-            minLength={10}
             maxLength={2000}
-            rows={4}
+            rows={3}
             placeholder="Tengo un restaurante con 12 mesas y quiero que los clientes vean el menú desde el celular…"
           />
         </Field>

@@ -20,7 +20,7 @@ import {
   REQUEST_TYPE_LABELS,
   formatDate,
 } from "@/lib/labels";
-import { ADDITIONAL_TAG_PRICE_LABEL } from "@/lib/plans";
+import { additionalTagPriceLabel } from "@/lib/plans";
 import { prisma } from "@/lib/prisma";
 import { createClientRequest } from "@/server/request-actions";
 
@@ -104,7 +104,8 @@ export default async function ClientRequestsPage({
 
           {isTagRequest ? (
             <p className="mb-4 rounded-lg bg-info-soft px-4 py-3 text-sm text-brand-strong">
-              Placa adicional: <span className="font-medium">{ADDITIONAL_TAG_PRICE_LABEL}</span>.
+              Placa adicional:{" "}
+              <span className="font-medium">{additionalTagPriceLabel(business.plan)}</span>.
               No cambia tu cuota mensual por sí sola; el equipo te confirma el detalle al
               coordinar la instalación.
             </p>

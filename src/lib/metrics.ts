@@ -1,5 +1,5 @@
 import { TIMEZONE } from "@/lib/analytics";
-import { PLAN_PRICE_USD } from "@/lib/plans";
+import { PLAN_MONTHLY_CRC } from "@/lib/plans";
 import { prisma } from "@/lib/prisma";
 import { startOfZonedDay, zonedDateKey } from "@/lib/timezone";
 
@@ -10,9 +10,12 @@ import { startOfZonedDay, zonedDateKey } from "@/lib/timezone";
  * Todo sale de datos que la plataforma ya registra — nada se estima ni se
  * inventa. Dos límites explícitos, documentados donde corresponde:
  *
- * 1. MRR/ARR/ARPU usan `PLAN_PRICE_USD` como precio de referencia por tier.
- *    Para CHAIN es un piso: la cuenta real se negocia por sucursal, así que
- *    estas cifras pueden subestimar (nunca sobrestimar) el ingreso real.
+ * 1. MRR/ARR/ARPU usan `PLAN_MONTHLY_CRC` (la mensualidad real de cada plan,
+ *    en colones — antes era una cifra en dólares que nadie cobraba). Un
+ *    negocio con un `includedTagsOverride` a medida sigue facturando lo de
+ *    su plan base para este cálculo: el precio real negociado no vive en la
+ *    base de datos, así que esta cifra puede subestimar el ingreso real de
+ *    esas cuentas, nunca sobrestimarlo.
  * 2. Churn y reactivación dependen de `AuditLog` (acciones
  *    `BUSINESS_DEACTIVATED`/`BUSINESS_REACTIVATED`, registradas desde
  *    setiembre 2026). Un negocio desactivado antes de esa fecha no aparece
@@ -21,9 +24,9 @@ import { startOfZonedDay, zonedDateKey } from "@/lib/timezone";
  */
 
 export type GrowthMetrics = {
-  mrrUsd: number;
-  arrUsd: number;
-  arpuUsd: number;
+  mrrCrc: number;
+  arrCrc: number;
+  arpuCrc: number;
   activeClients: number;
   totalClients: number;
   newClientsThisMonth: number;
@@ -55,8 +58,8 @@ export async function getGrowthMetrics(): Promise<GrowthMetrics> {
   ]);
 
   const activeBusinesses = businesses.filter((b) => b.active);
-  const mrrUsd = round2(
-    activeBusinesses.reduce((sum, b) => sum + PLAN_PRICE_USD[b.plan], 0),
+  const mrrCrc = round2(
+    activeBusinesses.reduce((sum, b) => sum + PLAN_MONTHLY_CRC[b.plan], 0),
   );
 
   const newClientsThisMonth = businesses.filter((b) => b.createdAt >= monthStart).length;
@@ -73,9 +76,9 @@ export async function getGrowthMetrics(): Promise<GrowthMetrics> {
   };
 
   return {
-    mrrUsd,
-    arrUsd: round2(mrrUsd * 12),
-    arpuUsd: activeBusinesses.length > 0 ? round2(mrrUsd / activeBusinesses.length) : 0,
+    mrrCrc,
+    arrCrc: round2(mrrCrc * 12),
+    arpuCrc: activeBusinesses.length > 0 ? round2(mrrCrc / activeBusinesses.length) : 0,
     activeClients: activeBusinesses.length,
     totalClients: businesses.length,
     newClientsThisMonth,
