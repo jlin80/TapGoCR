@@ -14,7 +14,7 @@ const NAV: NavGroup[] = [
     items: [
       { href: "/client/dashboard", label: "Resumen" },
       { href: "/client/analytics", label: "Analytics" },
-      { href: "/client/tags", label: "Mis tags" },
+      { href: "/client/tags", label: "Mis puntos TapGo" },
     ],
   },
   {

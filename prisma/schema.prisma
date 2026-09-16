@@ -275,6 +275,7 @@ model Business {
   members  BusinessUser[]
   links    BusinessLink[]
   tags     Tag[]
+  pointGroups PointGroup[]
   events   ScanEvent[]
   domains  Domain[]
   services BusinessService[]
@@ -408,14 +409,38 @@ model Tag {
   code          String   @unique
   name          String
   locationLabel String?
+  // Agrupación visual opcional ("Mesas", "Entrada"...). Nullable a propósito:
+  // todo tag creado antes de que existiera PointGroup sigue funcionando sin
+  // grupo, mostrado como suelto en vez de romper o migrar datos existentes.
+  pointGroupId  String?
   active        Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  business Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  events   ScanEvent[]
-  chip     Chip?
+  business   Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  pointGroup PointGroup? @relation(fields: [pointGroupId], references: [id], onDelete: SetNull)
+  events     ScanEvent[]
+  chip       Chip?
 
+  @@index([businessId])
+  @@index([pointGroupId])
+}
+
+// Agrupa tags por contexto físico para la vista del cliente ("Mesas",
+// "Entrada", "Recepción"). Puramente organizativo: no cambia el contenido que
+// muestra cada tag ni su URL, solo cómo se listan.
+model PointGroup {
+  id            String   @id @default(cuid())
+  businessId    String
+  name          String
+  locationLabel String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  tags     Tag[]
+
+  @@unique([businessId, name])
   @@index([businessId])
 }
 

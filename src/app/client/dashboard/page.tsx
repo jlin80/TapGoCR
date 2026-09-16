@@ -16,14 +16,17 @@ import { hasPublishedMenu } from "@/lib/menu";
 import { PLAN_LABELS, PLAN_TONES } from "@/lib/plans";
 import { prisma } from "@/lib/prisma";
 
-/** Accesos directos de "¿Qué querés hacer?" — mismas rutas que ya existían en el menú lateral. */
+/**
+ * Accesos secundarios de "¿Qué querés hacer?": editar menú, ver los puntos
+ * TapGo y ver estadísticas. "Editar mi página" es el CTA principal, aparte
+ * (ver más abajo) — no uno más de esta rejilla. Antes había 6 atajos, dos de
+ * ellos ("Administrar enlaces" y "Cambiar apariencia") llevaban al mismo
+ * lugar sin distinción real; ahora "Editar mi página" cubre ambos.
+ */
 const QUICK_ACTIONS = [
   { href: "/client/menu", icon: "🍽️", label: "Editar menú" },
-  { href: "/client/profile#enlaces", icon: "🔗", label: "Administrar enlaces" },
-  { href: "/client/profile#apariencia", icon: "🎨", label: "Cambiar apariencia" },
-  { href: "/client/business", icon: "🏪", label: "Información del negocio" },
+  { href: "/client/tags", icon: "📍", label: "Mis puntos TapGo" },
   { href: "/client/analytics", icon: "📊", label: "Ver estadísticas" },
-  { href: "/client/tags", icon: "📱", label: "Mis placas" },
 ] as const;
 
 export const metadata: Metadata = { title: "Dashboard" };
@@ -51,6 +54,7 @@ export default async function ClientDashboardPage() {
   });
 
   const activeTag = tags.find((tag) => tag.active) ?? null;
+  const activeCount = tags.filter((tag) => tag.active).length;
 
   // --- Puesta en marcha de la página pública --------------------------------
   // Cubre tanto al negocio dado de alta antes de que el registro pidiera estos
@@ -128,27 +132,46 @@ export default async function ClientDashboardPage() {
           </div>
           {activeTag ? (
             <>
-              <p className="mt-4 truncate rounded-lg bg-surface-muted px-3 py-2 text-sm text-muted">
-                {tagUrl(activeTag.code)}
+              <p className="mt-4 text-sm text-muted">
+                <span className="font-medium text-foreground">
+                  {activeCount} {activeCount === 1 ? "punto activo" : "puntos activos"}
+                </span>{" "}
+                · 1 página compartida
               </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <LinkButton href={tagUrl(activeTag.code)} target="_blank" rel="noopener noreferrer">
-                  Ver página
-                </LinkButton>
-                <CopyButton value={tagUrl(activeTag.code)} label="Copiar enlace" />
-              </div>
+              <details className="mt-3">
+                <summary className="cursor-pointer list-none text-xs font-medium text-brand select-none">
+                  Más opciones
+                </summary>
+                <div className="mt-2 flex flex-col gap-2">
+                  <p className="truncate rounded-lg bg-surface-muted px-3 py-2 text-xs text-muted">
+                    {tagUrl(activeTag.code)}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <LinkButton href={tagUrl(activeTag.code)} target="_blank" rel="noopener noreferrer">
+                      Ver página
+                    </LinkButton>
+                    <CopyButton value={tagUrl(activeTag.code)} label="Copiar enlace" />
+                  </div>
+                </div>
+              </details>
             </>
           ) : (
             <p className="mt-4 text-sm text-muted">
-              Todavía no tenés una placa activa. El equipo de TapGoCR la instala y la
-              activa por vos.
+              Todavía no tenés un punto TapGo activo. El equipo de TapGoCR lo
+              instala y lo activa por vos.
             </p>
           )}
         </Card>
 
-        <div>
-          <p className="stat-label mb-3">¿Qué querés hacer?</p>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="flex flex-col gap-3">
+          <Link
+            href="/client/profile"
+            className="tap-target flex items-center justify-center gap-2 rounded-2xl bg-brand px-6 py-4 text-center font-medium text-brand-contrast transition-colors hover:bg-brand-strong"
+          >
+            Editar mi página
+          </Link>
+
+          <div className="grid grid-cols-3 gap-3">
             {QUICK_ACTIONS.map((action) => (
               <Link
                 key={action.label}
@@ -204,7 +227,7 @@ export default async function ClientDashboardPage() {
           stats={[
             { label: "Clics este mes", value: summary.clicks30d, href: "/client/analytics" },
             {
-              label: "Tags activos",
+              label: "Puntos activos",
               value: summary.tagsActive,
               hint: `de ${summary.tagsTotal} en total`,
               href: "/client/tags",
@@ -217,7 +240,7 @@ export default async function ClientDashboardPage() {
 
       <section>
         <GroupHeading
-          title="Mis tags"
+          title="Mis puntos TapGo"
           action={
             <Link href="/client/tags" className="text-sm font-medium text-brand hover:underline">
               Ver detalle
@@ -226,8 +249,8 @@ export default async function ClientDashboardPage() {
         />
         {tags.length === 0 ? (
           <p className="surface-sunken px-6 py-8 text-center text-sm text-muted">
-            Todavía no tenés tags. El equipo de TapGoCR los crea y los entrega
-            instalados.
+            Todavía no tenés puntos TapGo. El equipo de TapGoCR los crea y los
+            entrega instalados.
           </p>
         ) : (
           <ul className="surface-panel divide-hairline overflow-hidden">

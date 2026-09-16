@@ -20,7 +20,7 @@ import { requireRoot, requireTagAccess } from "@/lib/authz";
 import { appName, tagUrl } from "@/lib/config";
 import { prisma } from "@/lib/prisma";
 import { qrSvgForCode } from "@/lib/qr";
-import { reassignTag, toggleTagActive, updateTag } from "@/server/tag-actions";
+import { deleteTag, reassignTag, toggleTagActive, updateTag } from "@/server/tag-actions";
 
 export const metadata: Metadata = { title: "Producción del tag" };
 
@@ -47,13 +47,14 @@ export default async function TagDetailPage({ params }: PageProps<"/app/tags/[id
     },
   });
 
-  const [qrSvg, businesses] = await Promise.all([
+  const [qrSvg, businesses, totalEvents] = await Promise.all([
     qrSvgForCode(tag.code),
     prisma.business.findMany({
       where: { id: { not: tag.business.id } },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),
+    prisma.scanEvent.count({ where: { tagId: tag.id } }),
   ]);
 
   const url = tagUrl(tag.code);
@@ -122,7 +123,25 @@ export default async function TagDetailPage({ params }: PageProps<"/app/tags/[id
                   {tag.active ? "Desactivar" : "Activar"}
                 </SubmitButton>
               </form>
+
+              {totalEvents === 0 ? (
+                <form action={deleteTag}>
+                  <input type="hidden" name="tagId" value={tag.id} />
+                  <SubmitButton
+                    variant="danger"
+                    confirm={`¿Eliminar "${tag.name}"? Nunca registró actividad, así que no se pierde ningún historial. Esta acción no se puede deshacer.`}
+                  >
+                    Eliminar
+                  </SubmitButton>
+                </form>
+              ) : null}
             </div>
+            {totalEvents === 0 ? (
+              <p className="mt-2 text-xs text-muted">
+                Sin scans todavía: se puede eliminar sin perder historial. Si ya
+                lo instalaste, usá &ldquo;Desactivar&rdquo; en vez de borrarlo.
+              </p>
+            ) : null}
 
             <ol className="mt-5 list-decimal space-y-1 pl-5 text-sm text-muted">
               <li>Copiar la URL.</li>

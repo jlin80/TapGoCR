@@ -30,7 +30,7 @@ export function AppShell({
   return (
     <div className="flex min-h-full flex-col">
       <AutoRefresh />
-      <header className="sticky top-0 z-10 border-b border-border bg-surface/95 backdrop-blur">
+      <header className="sticky top-0 z-10 border-b border-border bg-surface/95 backdrop-blur print:hidden">
         <div className="console-container flex items-center justify-between gap-4 py-3">
           <div className="flex items-baseline gap-3">
             <Link href={homeHref} aria-label="Ir al panel">
@@ -55,8 +55,8 @@ export function AppShell({
         </div>
       </header>
 
-      <div className="console-container flex w-full flex-1 flex-col gap-6 py-6 md:flex-row">
-        <aside className="md:w-52 md:shrink-0 lg:w-56">
+      <div className="console-container flex w-full flex-1 flex-col gap-6 py-6 md:flex-row print:block print:p-0">
+        <aside className="md:w-52 md:shrink-0 lg:w-56 print:hidden">
           <SideNav groups={groups} />
         </aside>
         <main className="min-w-0 flex-1">{children}</main>

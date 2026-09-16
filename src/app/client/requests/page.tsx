@@ -104,9 +104,9 @@ export default async function ClientRequestsPage({
 
           {isTagRequest ? (
             <p className="mb-4 rounded-lg bg-info-soft px-4 py-3 text-sm text-brand-strong">
-              Placa adicional:{" "}
+              Punto TapGo adicional:{" "}
               <span className="font-medium">{additionalTagPriceLabel(business.plan)}</span>.
-              No cambia tu cuota mensual por sí sola; el equipo te confirma el detalle al
+              No cambia tu cuota mensual por sí solo; el equipo te confirma el detalle al
               coordinar la instalación.
             </p>
           ) : null}
@@ -129,16 +129,20 @@ export default async function ClientRequestsPage({
                 name="title"
                 required
                 maxLength={120}
-                defaultValue={isTagRequest ? "Placa adicional para mi local" : undefined}
+                defaultValue={isTagRequest ? "Punto TapGo adicional para mi local" : undefined}
                 placeholder="Crear página web"
               />
             </Field>
 
-            <Field label="Detalles">
+            <Field label="Detalles" hint={isTagRequest ? "Cuántos necesitás, dónde los vas a colocar y para qué los querés usar." : undefined}>
               <Textarea
                 name="description"
                 maxLength={2000}
-                placeholder="Contanos qué necesitás: secciones, contenido, plazos…"
+                placeholder={
+                  isTagRequest
+                    ? "Ej.: 3 puntos para las mesas de la terraza, para que cada una abra el menú."
+                    : "Contanos qué necesitás: secciones, contenido, plazos…"
+                }
               />
             </Field>
           </ActionForm>

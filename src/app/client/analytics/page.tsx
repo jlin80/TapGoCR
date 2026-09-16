@@ -14,9 +14,13 @@ export default async function ClientAnalyticsPage() {
     <>
       <PageHeader
         title="Analytics"
-        description="Actividad de tus tags en los últimos 30 días."
+        description="Actividad de tus puntos TapGo en los últimos 30 días."
       />
-      {business ? <AnalyticsView businessId={business.id} /> : <NoBusinessAssigned />}
+      {business ? (
+        <AnalyticsView businessId={business.id} audience="client" />
+      ) : (
+        <NoBusinessAssigned />
+      )}
     </>
   );
 }

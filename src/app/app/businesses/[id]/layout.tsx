@@ -32,7 +32,7 @@ export default async function BusinessLayout({
 
   return (
     <>
-      <header className="mb-5">
+      <header className="mb-5 print:hidden">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-semibold tracking-tight">{business.name}</h1>
           <Badge tone={business.active ? "success" : "neutral"}>
@@ -42,7 +42,7 @@ export default async function BusinessLayout({
         <p className="mt-1 text-sm text-muted">{business.slug}</p>
       </header>
 
-      <div className="mb-8">
+      <div className="mb-8 print:hidden">
         <Tabs items={tabs} />
       </div>
 

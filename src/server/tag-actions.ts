@@ -9,7 +9,7 @@ import { notifyLogEvent } from "@/lib/discord/events";
 import { placaQuotaFor } from "@/lib/chips";
 import { generateTagCode } from "@/lib/codes";
 import { prisma } from "@/lib/prisma";
-import { firstIssue, formValues, tagSchema } from "@/lib/validation";
+import { firstIssue, formValues, tagBulkSchema, tagSchema } from "@/lib/validation";
 
 /**
  * Gestión de tags NFC/QR. Crear, renombrar y reasignar son operaciones del
@@ -58,6 +58,100 @@ export async function createTag(
   }
 
   return { success: `Tag creado con el código ${code}.` };
+}
+
+/**
+ * Creación masiva de puntos TapGo, agrupados ("Mesa" × 10 → Mesa 1..Mesa 10
+ * en el grupo "Mesas"). Solo ROOT/Admin: el cliente pide puntos vía
+ * `/client/requests`, nunca los crea él mismo.
+ *
+ * Manda un único evento a Discord y una única entrada de auditoría para toda
+ * la tanda — diez tags no son diez avisos, son una decisión operativa.
+ */
+export async function createTagsBulk(
+  _previous: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const actor = await requireRoot();
+
+  const businessId = String(formData.get("businessId") ?? "");
+  if (!businessId) return { error: "Falta el negocio." };
+
+  const parsed = tagBulkSchema.safeParse(formValues(formData));
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { id: true, name: true, plan: true, includedTagsOverride: true },
+  });
+  if (!business) return { error: "El negocio no existe." };
+
+  const { groupName, namePrefix, quantity, startIndex, locationLabel } = parsed.data;
+
+  // Se asignan todos los códigos antes de escribir nada: si uno falla a mitad
+  // de una tanda de 50, mejor no crear nada que dejar la tanda a medias.
+  const codes: string[] = [];
+  for (let i = 0; i < quantity; i++) {
+    const code = await allocateCode();
+    if (!code) {
+      return {
+        error: "No se pudieron generar códigos únicos para toda la tanda. Probá con una cantidad menor.",
+      };
+    }
+    codes.push(code);
+  }
+
+  const groupId = await prisma.$transaction(async (tx) => {
+    const group = await tx.pointGroup.upsert({
+      where: { businessId_name: { businessId, name: groupName } },
+      create: { businessId, name: groupName, locationLabel },
+      update: locationLabel ? { locationLabel } : {},
+    });
+
+    await tx.tag.createMany({
+      data: codes.map((code, index) => ({
+        businessId,
+        code,
+        name: `${namePrefix} ${startIndex + index}`,
+        locationLabel,
+        pointGroupId: group.id,
+        active: true,
+      })),
+    });
+
+    return group.id;
+  });
+
+  revalidatePath(`/app/businesses/${businessId}/tags`);
+  revalidatePath("/app/tags");
+  revalidatePath("/app/dashboard");
+  revalidatePath("/client/tags");
+  revalidatePath("/client/dashboard");
+
+  await recordAudit({
+    actor,
+    action: AUDIT_ACTIONS.TAGS_BULK_CREATED,
+    entityType: "PointGroup",
+    entityId: groupId,
+    businessId,
+    details: { groupName, namePrefix, quantity, startIndex },
+  });
+
+  void notifyLogEvent({
+    eventId: `tags-bulk-created:${groupId}:${Date.now()}`,
+    action: "Puntos TapGo creados en lote",
+    actorEmail: actor.email ?? actor.id,
+    details: `${business.name}: ${quantity} puntos "${namePrefix}" en el grupo "${groupName}"`,
+  });
+
+  const quota = await placaQuotaFor(business);
+  if (quota.level !== "OK") {
+    return {
+      success: `${quantity} puntos creados en el grupo "${groupName}". Este negocio ya tiene ${quota.activeTags} placas activas de ${quota.limit} incluidas en su plan — es buen momento para ofrecer un upgrade.`,
+    };
+  }
+
+  return { success: `${quantity} puntos creados en el grupo "${groupName}".` };
 }
 
 export async function updateTag(
@@ -112,6 +206,34 @@ export async function toggleTagActive(formData: FormData): Promise<void> {
   revalidatePath(`/app/businesses/${tag.businessId}/tags`);
   revalidatePath(`/app/tags/${tagId}`);
   revalidatePath("/app/tags");
+}
+
+/**
+ * Elimina un tag creado por error.
+ *
+ * Solo permite borrar si nunca registró un scan/tap: un tag con historial se
+ * desactiva (`toggleTagActive`), nunca se borra — perdería su analytics para
+ * siempre. Esta es la vía explícita para el caso "lo creé sin querer, nunca
+ * se instaló, quiero que desaparezca", no un borrado general.
+ */
+export async function deleteTag(formData: FormData): Promise<void> {
+  await requireRoot();
+
+  const tagId = String(formData.get("tagId") ?? "");
+  if (!tagId) return;
+
+  const { businessId } = await requireTagAccess(tagId);
+
+  const eventCount = await prisma.scanEvent.count({ where: { tagId } });
+  if (eventCount > 0) return; // Sin feedback textual a propósito: el botón no se muestra en este caso.
+
+  await prisma.tag.delete({ where: { id: tagId } });
+
+  revalidatePath(`/app/businesses/${businessId}/tags`);
+  revalidatePath("/app/tags");
+  revalidatePath("/app/dashboard");
+  revalidatePath("/client/tags");
+  revalidatePath("/client/dashboard");
 }
 
 /**

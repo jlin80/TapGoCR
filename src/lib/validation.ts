@@ -254,6 +254,24 @@ export const tagSchema = z.object({
   active: checkbox,
 });
 
+/**
+ * Creación masiva de puntos TapGo (ROOT/Admin). "Mesa" + 10 → Mesa 1..Mesa 10,
+ * todos en el mismo `PointGroup`. Tope de 50 por tanda: ni un negocio real
+ * necesita más de golpe, ni conviene poder tipear un número desmedido en un
+ * campo sin más validación que "es un entero".
+ */
+export const tagBulkSchema = z.object({
+  groupName: trimmed(60).min(1, "Escribí un nombre de grupo, por ejemplo Mesas."),
+  namePrefix: trimmed(40).min(1, "Escribí un nombre base, por ejemplo Mesa."),
+  quantity: z.coerce
+    .number()
+    .int("Tiene que ser un número entero.")
+    .min(1, "Creá al menos un punto.")
+    .max(50, "Máximo 50 puntos por tanda."),
+  startIndex: z.coerce.number().int().min(1).default(1),
+  locationLabel: optionalText(80),
+});
+
 export const domainSchema = z.object({
   domain: trimmed(253)
     .min(4, "Escribí un dominio válido.")

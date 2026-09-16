@@ -20,9 +20,12 @@ import {
 export async function AnalyticsView({
   businessId,
   days = 30,
+  audience = "root",
 }: {
   businessId: string;
   days?: number;
+  /** "client" cambia el vocabulario técnico ("tag", "placa") por "punto TapGo". */
+  audience?: "client" | "root";
 }) {
   const [summary, series, clicks, tags, devices, value] = await Promise.all([
     getBusinessSummary(businessId),
@@ -84,7 +87,8 @@ export async function AnalyticsView({
           {value.ctr !== null ? <span>CTR: {value.ctr} clics por cada 100 scans</span> : null}
           {topTag ? (
             <span>
-              Placa más activa: <span className="font-medium text-foreground">{topTag.label}</span>{" "}
+              {audience === "client" ? "Punto con más actividad" : "Placa más activa"}:{" "}
+              <span className="font-medium text-foreground">{topTag.label}</span>{" "}
               ({topTag.count.toLocaleString("es-CR")} scans)
             </span>
           ) : null}
@@ -109,7 +113,10 @@ export async function AnalyticsView({
           <BreakdownBars data={clicks} label="Clicks por destino" />
         </Card>
         <Card>
-          <BreakdownBars data={tags} label="Scans por tag" />
+          <BreakdownBars
+            data={tags}
+            label={audience === "client" ? "Puntos con más interacciones" : "Scans por tag"}
+          />
         </Card>
         <Card>
           <BreakdownBars data={devices} label="Dispositivo" />
@@ -130,7 +137,7 @@ export async function AnalyticsView({
               </dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-muted">Tags activos</dt>
+              <dt className="text-muted">{audience === "client" ? "Puntos activos" : "Tags activos"}</dt>
               <dd className="tabular-nums">
                 {summary.tagsActive} de {summary.tagsTotal}
               </dd>
