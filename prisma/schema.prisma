@@ -1,0 +1,618 @@
+// TapGoCR — esquema de base de datos
+// Plataforma NFC + QR + Analytics multi-tenant.
+//
+// Nota de arquitectura: el acceso de un usuario a un negocio se resuelve SIEMPRE
+// a través de BusinessUser. Business.ownerId es únicamente un puntero denormalizado
+// al propietario principal y nunca debe usarse como única fuente de autorización.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  ROOT
+  CLIENT
+}
+
+enum BusinessRole {
+  OWNER
+  MANAGER
+  VIEWER
+}
+
+enum LinkType {
+  MENU
+  WHATSAPP
+  INSTAGRAM
+  TIKTOK
+  FACEBOOK
+  GOOGLE_REVIEWS
+  GOOGLE_MAPS
+  WEBSITE
+  PHONE
+  CATALOG
+  CUSTOM
+}
+
+enum ScanEventType {
+  SCAN
+  CLICK
+}
+
+// De dónde sale el botón "Ver menú" de la landing.
+//
+// LINK   — el negocio publica una URL externa o un PDF (BusinessLink de tipo MENU).
+// NATIVE — el menú vive en TapGoCR (MenuCategory + MenuItem) y el botón abre
+//          /t/{code}/menu.
+//
+// Es un interruptor explícito en lugar de "hay categorías, entonces es nativo":
+// así un negocio puede cargar su menú tranquilo y publicarlo cuando esté listo,
+// sin que la landing cambie a medias.
+enum MenuMode {
+  LINK
+  NATIVE
+}
+
+// Preset visual de la landing pública. Un solo sistema de diseño, cinco
+// combinaciones de tokens (color, tipografía, forma) — no cinco páginas
+// distintas. Ver `src/lib/theme.ts`.
+enum LandingTheme {
+  MINIMAL
+  TROPICAL
+  ELEGANTE
+  VIBRANTE
+  BOUTIQUE
+}
+
+enum DeviceType {
+  IPHONE
+  ANDROID
+  DESKTOP
+  UNKNOWN
+}
+
+enum DomainStatus {
+  NONE
+  REQUESTED
+  PURCHASE_PENDING
+  REGISTERED
+  CONFIGURING
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum ServiceType {
+  NFC
+  QR
+  LANDING
+  DOMAIN
+  WEBSITE
+  HOSTING
+  // Buzones de correo del dominio del cliente. TapGoCR no opera servidores de
+  // correo: contrata y administra el servicio en un proveedor, igual que hace
+  // con los dominios. `provider` guarda cuál.
+  EMAIL
+  MAINTENANCE
+  CUSTOM
+}
+
+enum ServiceStatus {
+  LEAD
+  QUOTED
+  PENDING
+  ACTIVE
+  PAUSED
+  CANCELLED
+}
+
+enum RequestType {
+  DOMAIN
+  WEBSITE
+  HOSTING
+  NFC
+  QR
+  MAINTENANCE
+  OTHER
+}
+
+enum RequestStatus {
+  NEW
+  IN_PROGRESS
+  WAITING_CLIENT
+  COMPLETED
+  CANCELLED
+}
+
+enum RequestPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum ChipModel {
+  NTAG213
+  NTAG215
+  NTAG216
+  OTHER
+}
+
+// Plan de suscripción del negocio: cuota mensual de taps incluida en la cuota
+// fija, no cobro por uso. `src/lib/plans.ts` tiene el tope de cada uno y el
+// cálculo del ciclo vigente a partir de `Business.planStartedAt`.
+enum Plan {
+  LOCAL
+  BUSINESS
+  CHAIN
+}
+
+enum ChipStatus {
+  IN_STOCK
+  ASSIGNED
+  INSTALLED
+  RETIRED
+}
+
+// Cómo se abrió la landing. El QR incluye un parámetro que lo identifica; el
+// NFC lleva la URL limpia. Una URL escrita a mano o compartida cae en TAP, así
+// que el dato es una aproximación honesta, no una medición exacta.
+enum EventSource {
+  TAP
+  QR
+}
+
+enum RegistrationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUOTED
+  WON
+  LOST
+}
+
+// ---------------------------------------------------------------------------
+// Usuarios
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  // Identificador visible del cliente, tipo TGC-0001. Lo asigna el sistema al
+  // aprobar la solicitud; nadie lo elige. Sirve para iniciar sesion ademas del
+  // correo, y para referirse a un cliente sin usar su id interno.
+  clientCode   String?  @unique
+  passwordHash String
+  name         String
+  role         UserRole @default(CLIENT)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  memberships     BusinessUser[]
+  ownedBusinesses Business[]     @relation("BusinessOwner")
+
+  @@index([role])
+}
+
+// ---------------------------------------------------------------------------
+// Negocios
+// ---------------------------------------------------------------------------
+
+model Business {
+  id          String   @id @default(cuid())
+  ownerId     String?
+  name        String
+  slug        String   @unique
+  legalId     String?
+  description String?
+  logoUrl     String?
+  phone       String?
+  whatsapp    String?
+  address     String?
+  latitude    Float?
+  longitude   Float?
+  websiteUrl  String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // --- Presentación de la landing pública ---------------------------------
+  // Campos que el propio negocio administra desde "Mi página pública". Todos
+  // son opcionales: la landing se degrada con elegancia cuando faltan.
+  category   String?
+  coverUrl   String?
+  // Colores en formato #rrggbb. Sin ellos la landing usa la paleta de TapGoCR.
+  brandColor String?
+  accentColor String?
+  menuMode   MenuMode @default(LINK)
+  // Sin elegir tema, la landing usa MINIMAL: se ve profesional con cero
+  // configuración, que es el estado de todos los negocios existentes hoy.
+  landingTheme LandingTheme @default(MINIMAL)
+
+  // --- Suscripción ----------------------------------------------------------
+  // El plan se cobra por cantidad de placas (tags) activas, no por volumen de
+  // taps: los taps son siempre ilimitados. `PLAN_TAG_LIMITS` en
+  // `src/lib/plans.ts` define cuántas placas incluye cada tier; superarlas
+  // nunca corta el servicio, solo es la señal comercial para subir de plan o
+  // comprar placas adicionales.
+  plan          Plan     @default(LOCAL)
+  // Cantidad de placas incluidas negociada a medida (típico en CHAIN o
+  // contratos especiales). `null` usa el tope estándar de `PLAN_TAG_LIMITS`.
+  includedTagsOverride Int?
+  planStartedAt DateTime @default(now())
+
+  owner    User?             @relation("BusinessOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  members  BusinessUser[]
+  links    BusinessLink[]
+  tags     Tag[]
+  events   ScanEvent[]
+  domains  Domain[]
+  services BusinessService[]
+  requests ServiceRequest[]
+  menuCategories MenuCategory[]
+
+  @@index([active])
+  @@index([ownerId])
+}
+
+model BusinessUser {
+  id         String       @id @default(cuid())
+  businessId String
+  userId     String
+  role       BusinessRole @default(OWNER)
+  createdAt  DateTime     @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, userId])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Enlaces de la landing
+// ---------------------------------------------------------------------------
+
+model BusinessLink {
+  id         String   @id @default(cuid())
+  businessId String
+  type       LinkType
+  label      String
+  url        String
+  icon       String?
+  position   Int      @default(0)
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, position])
+}
+
+// ---------------------------------------------------------------------------
+// Menú digital nativo
+// ---------------------------------------------------------------------------
+
+// Dos tablas y nada más: una categoría agrupa productos y un producto pertenece
+// a una categoría. El precio se guarda en céntimos enteros para no arrastrar
+// errores de coma flotante, y la moneda es un campo del negocio implícito
+// (colones) porque el MVP no vende fuera de Costa Rica.
+//
+// No se duplica nada de Business acá: el nombre, el logo y los colores se leen
+// del negocio al renderizar.
+model MenuCategory {
+  id         String   @id @default(cuid())
+  businessId String
+  name       String
+  description String?
+  position   Int      @default(0)
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  items    MenuItem[]
+
+  @@index([businessId, position])
+}
+
+model MenuItem {
+  id          String   @id @default(cuid())
+  categoryId  String
+  name        String
+  description String?
+  // Céntimos. 2 500,50 colones se guardan como 250050.
+  priceCents  Int?
+  imageUrl    String?
+  // Disponible hoy. Un producto agotado se oculta del listado sin borrarlo,
+  // para que el negocio no tenga que volver a cargarlo mañana.
+  available   Boolean  @default(true)
+  // Aparece en la sección "Destacados" de la landing, además de en su
+  // categoría — no la reemplaza. Sin destacados, esa sección no se muestra.
+  featured    Boolean  @default(false)
+  position    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  category MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@index([categoryId, position])
+}
+
+// ---------------------------------------------------------------------------
+// Bitácora de operaciones sensibles
+// ---------------------------------------------------------------------------
+
+// Registro append-only de acciones que cambian el estado de otro tenant o que
+// alteran cifras que el cliente ve. Nace para el reinicio de cuota de taps: la
+// operación no borra eventos, pero sí mueve el contador que ve el cliente, así
+// que debe quedar claro quién la hizo y con qué valores.
+//
+// `actorId` no es una relación con onDelete: Cascade a propósito. Si se elimina
+// la cuenta que ejecutó la acción, la entrada debe sobrevivir.
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actorEmail String?
+  action     String
+  entityType String
+  entityId   String
+  businessId String?
+  // Valores relevantes de la operación, ya serializados. Nunca credenciales.
+  details    Json?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId, createdAt])
+  @@index([businessId, createdAt])
+  @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Tags NFC / QR
+// ---------------------------------------------------------------------------
+
+model Tag {
+  id            String   @id @default(cuid())
+  businessId    String
+  code          String   @unique
+  name          String
+  locationLabel String?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  business Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  events   ScanEvent[]
+  chip     Chip?
+
+  @@index([businessId])
+}
+
+// ---------------------------------------------------------------------------
+// Inventario de chips fisicos
+// ---------------------------------------------------------------------------
+
+// Un Tag es la identidad logica (el codigo y la URL); un Chip es la pieza de
+// hardware que la lleva programada. Se separan porque un chip puede estar en
+// stock sin tag asignado, y porque una placa danada se reemplaza por otro chip
+// conservando el mismo tag, su URL y su historial.
+//
+// El chip es solo el inventario físico. La cuota de taps ya no vive acá: es
+// del plan de suscripción del negocio (`Business.plan`), compartida entre
+// todos sus chips y renovada cada mes.
+model Chip {
+  id        String     @id @default(cuid())
+  uid       String     @unique
+  model     ChipModel  @default(NTAG215)
+  status    ChipStatus @default(IN_STOCK)
+  batch     String?
+  tagId     String?    @unique
+  notes     String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  tag Tag? @relation(fields: [tagId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([batch])
+}
+
+// ---------------------------------------------------------------------------
+// Analytics
+// ---------------------------------------------------------------------------
+
+// Datos minimizados a propósito: nunca se almacena la IP completa (solo un hash
+// truncado y con sal) ni información que permita construir un perfil personal.
+model ScanEvent {
+  id         String        @id @default(cuid())
+  tagId      String?
+  businessId String
+  eventType  ScanEventType
+  target     String?
+  timestamp  DateTime      @default(now())
+  userAgent  String?
+  referer    String?
+  ipHash     String?
+  country    String?
+  deviceType DeviceType    @default(UNKNOWN)
+  source     EventSource   @default(TAP)
+
+  tag      Tag?     @relation(fields: [tagId], references: [id], onDelete: SetNull)
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, timestamp])
+  @@index([businessId, eventType, timestamp])
+  @@index([tagId, timestamp])
+  @@index([tagId, eventType, timestamp])
+}
+
+// ---------------------------------------------------------------------------
+// Dominios (servicio administrado, sin compra automática)
+// ---------------------------------------------------------------------------
+
+// Nunca almacenar credenciales del registrador en este modelo.
+model Domain {
+  id         String       @id @default(cuid())
+  businessId String
+  domain     String       @unique
+  status     DomainStatus @default(NONE)
+  registrar  String?
+  expiresAt  DateTime?
+  autoRenew  Boolean      @default(false)
+  notes      String?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  // --- Avisos de vencimiento ------------------------------------------------
+  // Se guarda el ultimo aviso enviado para no repetirlo cada vez que corre la
+  // tarea diaria. `lastNoticeStage` es el umbral en dias (60, 30, 14, 7, 1) o 0
+  // para el aviso de dominio ya vencido; comparar contra el umbral actual es lo
+  // que hace la tarea idempotente sin necesidad de una tabla aparte.
+  lastNoticeAt    DateTime?
+  lastNoticeStage Int?
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([expiresAt])
+}
+
+// ---------------------------------------------------------------------------
+// Servicios contratados
+// ---------------------------------------------------------------------------
+
+// Un único modelo cubre todos los tipos de servicio. Los campos `provider`,
+// `lastUpdate` y `nextReview` son los datos específicos de HOSTING y
+// MAINTENANCE descritos en la especificación; se mantienen aquí en lugar de
+// crear tablas separadas casi vacías.
+model BusinessService {
+  id          String        @id @default(cuid())
+  businessId  String
+  type        ServiceType
+  status      ServiceStatus @default(LEAD)
+  provider    String?
+  notes       String?
+  startDate   DateTime?
+  renewalDate DateTime?
+  lastUpdate  DateTime?
+  nextReview  DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// Solicitudes de servicio
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Solicitudes de registro
+// ---------------------------------------------------------------------------
+
+// Alta pedida desde el sitio publico. No crea acceso por si sola: queda
+// pendiente hasta que una cuenta ROOT la apruebe, y recien ahi se crean el
+// usuario y el negocio.
+//
+// La contrasena la elige la persona al registrarse y se guarda ya hasheada, de
+// modo que al aprobar no hay que generar ni comunicar ninguna credencial.
+model Registration {
+  id           String             @id @default(cuid())
+  firstName    String
+  lastName     String
+  email        String             @unique
+  phone        String
+  passwordHash String
+  businessName String
+  legalId      String?
+  address      String
+  province     String
+  canton       String?
+  postalCode   String?
+  notes        String?
+
+  // --- Presencia online opcional --------------------------------------------
+  // Lo que la persona ya tenga a mano al registrarse: si lo carga acá, no
+  // estrena la placa con la landing vacía. Nada de esto es obligatorio porque
+  // no todo negocio tiene Instagram, Facebook o un menú en PDF listo; al
+  // aprobar, cada campo presente se convierte en un enlace publicado.
+  // `whatsapp` es el número del negocio (puede diferir del `phone` de
+  // contacto de arriba) y va directo a `Business.whatsapp`, no a un enlace.
+  whatsapp         String?
+  instagramUrl     String?
+  facebookUrl      String?
+  googleReviewsUrl String?
+  menuUrl          String?
+
+  status       RegistrationStatus @default(PENDING)
+  reviewNotes  String?
+  reviewedAt   DateTime?
+  ipHash       String?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  createdUserId     String? @unique
+  createdBusinessId String? @unique
+
+  @@index([status, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Consultas del sitio comercial
+// ---------------------------------------------------------------------------
+
+// A diferencia de ScanEvent, acá sí se guardan datos personales: la persona los
+// entrega voluntariamente para que la contactemos. Se conserva solo lo mínimo
+// para responder, y el ipHash existe únicamente para frenar envíos masivos.
+model ContactLead {
+  id           String     @id @default(cuid())
+  name         String
+  email        String
+  phone        String?
+  businessName String?
+  message      String
+  status       LeadStatus @default(NEW)
+  notes        String?
+  ipHash       String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([status, createdAt])
+  @@index([createdAt])
+}
+
+model ServiceRequest {
+  id          String          @id @default(cuid())
+  businessId  String
+  type        RequestType
+  title       String
+  description String?
+  status      RequestStatus   @default(NEW)
+  priority    RequestPriority @default(NORMAL)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([status])
+}

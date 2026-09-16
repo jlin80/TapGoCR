@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Punto de entrada CommonJS para Phusion Passenger (cPanel): no es
+    // código de la app, así que no aplican las reglas de import de ESM/TS.
+    "server.js",
   ]),
 ]);
 

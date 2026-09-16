@@ -4,23 +4,60 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "node --import tsx --test tests/unit.test.ts",
+    "test:e2e": "node --import tsx --test --test-concurrency=1 tests/authorization.e2e.test.ts tests/registration.e2e.test.ts",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:seed": "prisma db seed",
+    "db:studio": "prisma studio",
+    "postinstall": "prisma generate",
+    "root:set": "tsx scripts/set-root.ts",
+    "domains:notify": "tsx scripts/notify-domains.ts",
+    "healthcheck": "tsx scripts/healthcheck.ts",
+    "discord:activity": "tsx scripts/notify-activity.ts",
+    "email:check": "tsx scripts/check-inbound-email.ts"
   },
   "dependencies": {
-    "next": "16.3.0",
+    "@auth/core": "0.41.3",
+    "@prisma/adapter-mariadb": "^7.10.0",
+    "@prisma/client": "^7.10.0",
+    "@types/nodemailer": "^8.0.1",
+    "bcryptjs": "^3.0.3",
+    "imapflow": "^2.0.5",
+    "mailparser": "^3.9.28",
+    "next": "16.3.4",
+    "next-auth": "^5.0.0-beta.32",
+    "nodemailer": "^8.0.11",
+    "qrcode": "^1.5.4",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/mailparser": "^3.4.6",
     "@types/node": "^20",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.3.0",
+    "prisma": "^7.10.0",
     "tailwindcss": "^4",
+    "tsx": "^4.23.12",
     "typescript": "^5"
+  },
+  "allowScripts": {
+    "@prisma/engines@7.10.0": true,
+    "prisma@7.10.0": true
+  },
+  "overrides": {
+    "mariadb": "^3.4.7"
   }
 }

@@ -1,26 +1,957 @@
 @import "tailwindcss";
 
+/*
+ * Tokens de marca de TapGoCR.
+ *
+ * Todo el color de la interfaz sale de aquí. Cuando exista una identidad
+ * definitiva (logo, paleta, tipografía) basta con cambiar estos valores: no hay
+ * colores sueltos en los componentes.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+  /*
+   * Verde TapGo (#00B86B) como color de acción principal. #00B86B es un verde
+   * de saturación media: contra blanco no llega a 3:1 de contraste (WCAG),
+   * así que `--brand-contrast` usa un verde casi negro en vez de blanco —
+   * mismo criterio que ya usaba `.on-dark` para sus botones.
+   */
+  --brand-50: #e6faf1;
+  --brand-100: #c3f3df;
+  --brand-200: #8ce6be;
+  --brand-400: #22d98c;
+  --brand-500: #00b86b;
+  --brand-600: #00b86b;
+  --brand-700: #00923f;
+  --brand-900: #0b4a34;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --background: #f6f7f9;
+  --surface: #ffffff;
+  --surface-muted: #f1f5f9;
+  --foreground: #0f172a;
+  --muted: #64748b;
+  --border: #e2e8f0;
+
+  --brand: var(--brand-600);
+  --brand-strong: var(--brand-700);
+  --brand-contrast: #04201d;
+
+  /*
+   * Acento cálido, secundario.
+   *
+   * La paleta era enteramente teal sobre casi-negro: un solo tono, sin jerarquía
+   * cromática. Este ámbar existe para señalar UNA cosa por pantalla —el paquete
+   * destacado, el número de un paso— y nada más. Si empieza a aparecer en todos
+   * lados deja de destacar y vuelve a ser ruido.
+   */
+  --accent: #f59e0b;
+  --accent-strong: #d97706;
+  --accent-contrast: #201400;
+  --accent-soft: #fef3c7;
+
+  --success: #15803d;
+  --success-soft: #dcfce7;
+  --warning: #b45309;
+  --warning-soft: #fef3c7;
+  --danger: #b91c1c;
+  --danger-soft: #fee2e2;
+  --info-soft: #e0f2fe;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0b1220;
+    --surface: #111a2b;
+    --surface-muted: #172136;
+    --foreground: #e8eef7;
+    --muted: #94a3b8;
+    --border: #243149;
+
+    --brand: var(--brand-500);
+    --brand-strong: var(--brand-400);
+    --brand-contrast: #04201d;
+
+    /* Sobre fondo oscuro el ámbar se aclara para mantener el contraste. */
+    --accent: #fbbf24;
+    --accent-strong: #f59e0b;
+    --accent-contrast: #1c1401;
+    --accent-soft: #3a2a08;
+
+    --success: #4ade80;
+    --success-soft: #14321f;
+    --warning: #fbbf24;
+    --warning-soft: #3a2a08;
+    --danger: #f87171;
+    --danger-soft: #3d1618;
+    --info-soft: #10263c;
   }
+
+  /*
+   * `logo.png` trae el nombre "TapGoCR" en navy sólido, pensado para fondos
+   * claros. En modo oscuro del sistema esa combinación pierde casi todo el
+   * contraste contra la superficie oscura del header — se fuerza a blanco
+   * con el mismo filtro que usa `BrandWordmark({ light: true })` para el
+   * header del home, que ya lo aplica a mano porque ahí SIEMPRE hace falta
+   * (flota sobre una foto oscura, sin importar el tema del sistema).
+   */
+  .brand-logo {
+    filter: brightness(0) invert(1);
+  }
+}
+
+
+/* ---------------------------------------------------------------------------
+ * Escalas del sistema de diseño.
+ *
+ * Todo lo que escala con el viewport usa `clamp()` en lugar de saltos por
+ * breakpoint. Un salto hace que el texto cambie de golpe al cruzar un ancho;
+ * `clamp` lo hace crecer de forma continua, y de paso evita tener que declarar
+ * cinco variantes por cada título.
+ *
+ * La unidad intermedia es `vw` acotada por un mínimo y un máximo, así que
+ * nunca queda ilegible en un teléfono ni desproporcionado en un ultrawide.
+ * ------------------------------------------------------------------------ */
+:root {
+  /* Tipografía fluida. El máximo se alcanza cerca de los 1440 px. */
+  --text-hero: clamp(2.25rem, 1.2rem + 5.2vw, 4.5rem);
+  --text-h1: clamp(1.75rem, 1.25rem + 2.2vw, 2.75rem);
+  --text-h2: clamp(1.5rem, 1.15rem + 1.6vw, 2.25rem);
+  --text-h3: clamp(1.125rem, 1rem + 0.6vw, 1.5rem);
+  --text-lead: clamp(1rem, 0.94rem + 0.35vw, 1.25rem);
+  --text-body: 0.9375rem;
+  --text-sm: 0.875rem;
+  --text-xs: 0.75rem;
+
+  /* Aire vertical entre secciones y márgenes laterales del contenido. */
+  --space-section: clamp(3.5rem, 2rem + 6vw, 7rem);
+  --gutter: clamp(1rem, 0.6rem + 1.6vw, 2.5rem);
+
+  /*
+   * Anchos de contenido.
+   *
+   * `--measure` acota la línea de texto a algo legible; `--container` es el
+   * marco general. En ultrawide el contenedor crece, pero el texto no: leer
+   * líneas de 1800 px es incómodo, por ancha que sea la pantalla.
+   */
+  --measure: 68ch;
+  --container: 80rem;
+  --container-wide: 96rem;
+
+  /* Radios. Un solo salto por nivel, sin valores sueltos en los componentes. */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-pill: 999px;
+
+  /*
+   * Sombras discretas y en dos capas: un halo de contacto muy corto y una
+   * difusión amplia y tenue. Una sola sombra grande se ve barata.
+   */
+  --shadow-xs: 0 1px 2px -1px rgb(15 23 42 / 0.08);
+  --shadow-sm: 0 1px 2px -1px rgb(15 23 42 / 0.08), 0 2px 8px -4px rgb(15 23 42 / 0.08);
+  --shadow-md: 0 2px 4px -2px rgb(15 23 42 / 0.1), 0 8px 24px -12px rgb(15 23 42 / 0.14);
+  --shadow-lg: 0 4px 8px -4px rgb(15 23 42 / 0.12), 0 20px 48px -24px rgb(15 23 42 / 0.2);
+
+  /* Altura mínima de cualquier control: cómodo para el dedo. */
+  --control-height: 2.75rem;
+  --control-height-sm: 2.25rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Sobre fondo oscuro una sombra negra no se ve: se profundiza el alfa. */
+    --shadow-xs: 0 1px 2px -1px rgb(0 0 0 / 0.5);
+    --shadow-sm: 0 1px 2px -1px rgb(0 0 0 / 0.5), 0 2px 8px -4px rgb(0 0 0 / 0.45);
+    --shadow-md: 0 2px 4px -2px rgb(0 0 0 / 0.5), 0 8px 24px -12px rgb(0 0 0 / 0.6);
+    --shadow-lg: 0 4px 8px -4px rgb(0 0 0 / 0.55), 0 20px 48px -24px rgb(0 0 0 / 0.7);
+  }
+}
+
+@theme inline {
+  /*
+   * Las variables --font-display y --font-body las inyecta `next/font` desde
+   * el layout raíz. Se listan fallbacks reales: si la fuente no llegara a
+   * cargar, el texto sigue siendo legible en lugar de saltar a Times.
+   */
+  --font-sans: var(--face-body), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: var(--face-display), var(--face-body), ui-sans-serif,
+    system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-contrast: var(--brand-contrast);
+  --color-brand-50: var(--brand-50);
+  --color-brand-100: var(--brand-100);
+  --color-brand-900: var(--brand-900);
+
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-contrast: var(--accent-contrast);
+  --color-accent-soft: var(--accent-soft);
+
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info-soft: var(--info-soft);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+}
+
+/*
+ * Los títulos llevan la tipografía de display.
+ *
+ * Se aplica por elemento y no clase por clase para que valga igual en el sitio
+ * comercial y en los paneles: una sola voz tipográfica en todo el producto. El
+ * `letter-spacing` negativo compensa que Bricolage Grotesque abre bastante en
+ * tamaños grandes.
+ */
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+/* Foco visible y consistente: requisito de accesibilidad de la landing. */
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Desplazamiento sin barra visible.
+ *
+ * Para tiras que se desplazan de lado y ya tienen su propia señal —las propias
+ * pestañas asomando por el borde—. La barra del sistema, con sus flechas, es
+ * cromo de escritorio que no pega con el resto de la interfaz.
+ *
+ * Se oculta la barra, NO el desplazamiento: rueda, gesto tactil y teclado
+ * siguen funcionando igual.
+ * ------------------------------------------------------------------------ */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---------------------------------------------------------------------------
+ * Jerarquía de superficies.
+ *
+ * El problema anterior no era el color ni el radio: era que TODO llevaba borde
+ * de 1px. Con doce cajas idénticas en pantalla, el borde deja de separar y pasa
+ * a ser ruido, y nada indica qué mirar primero.
+ *
+ * Estos cuatro niveles dan profundidad sin apilar sombras. La regla de uso:
+ * un solo elemento `raised` por pantalla, y solo cuando de verdad reclama la
+ * atención. El resto vive en `flat` o `sunken`.
+ * ------------------------------------------------------------------------ */
+
+/* Nivel 0. Contenido sobre el fondo, separado solo por espacio. Es el que más
+   se debe usar: la mayoría de los grupos no necesitan una caja. */
+.surface-flat {
+  background: transparent;
+}
+
+/* Nivel 1. Un tinte apenas perceptible agrupa sin dibujar un marco. */
+.surface-sunken {
+  background: var(--surface-muted);
+  border-radius: var(--radius-md);
+}
+
+/* Nivel 2. Superficie propia, separada por contraste de fondo y no por borde. */
+.surface-panel {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+}
+
+/* Nivel 3. Lo único que debe reclamar atención en la pantalla. */
+.surface-raised {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+/* Separador de un solo pelo, para dividir dentro de una superficie en lugar de
+   crear una caja nueva por cada elemento. */
+.divide-hairline > * + * {
+  border-block-start: 1px solid var(--border);
+}
+
+/* ---------------------------------------------------------------------------
+ * Riel de cifras.
+ *
+ * Reemplaza la rejilla de tarjetas de métrica. El número manda y la etiqueta se
+ * retira; la separación la hace un filete vertical, no un marco. Doce cajas
+ * pasan a ser una línea que se lee de un vistazo.
+ * ------------------------------------------------------------------------ */
+.stat-rail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.stat-rail > * {
+  background: var(--background);
+  padding: 1.15rem 1.25rem;
+}
+
+.stat-value {
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 1.2rem + 1.4vw, 2.1rem);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Una cifra en cero no es una noticia: se atenúa para que las que sí importan
+   destaquen sin tener que agrandarlas. */
+.stat-zero .stat-value {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* ---------------------------------------------------------------------------
+ * Contenedor de la consola.
+ *
+ * Antes era un `max-w-7xl` fijo (1280px). En un monitor de 1920 eso dejaba el
+ * 33% del ancho sin usar mientras las tablas de seis columnas iban apretadas, y
+ * en 2560 el desperdicio era la mitad de la pantalla.
+ *
+ * Ahora el ancho crece con el viewport y se detiene en 1600px, que es donde una
+ * fila de tabla deja de ser cómoda de recorrer con la vista. El margen lateral
+ * también crece con `clamp()`, así el contenido no queda pegado al borde en
+ * pantallas grandes ni desperdicia espacio en un teléfono.
+ * ------------------------------------------------------------------------ */
+.console-container {
+  margin-inline: auto;
+  inline-size: 100%;
+  /* Se consumen los tokens de escala en lugar de repetir los valores. */
+  max-inline-size: var(--container-wide);
+  padding-inline: var(--gutter);
+}
+
+/* ---------------------------------------------------------------------------
+ * Área táctil de los controles.
+ *
+ * Medido: en la consola, los 53 botones de una página quedaban por debajo de
+ * 44 px de alto (mínimo 33) y 19 de 20 campos de formulario también. Con ratón
+ * eso es cómodo y denso; con el dedo es incómodo y produce errores.
+ *
+ * La condición es `pointer: coarse`, no un breakpoint de ancho: lo que cambia
+ * no es el tamaño de la pantalla sino el instrumento con el que se apunta. Una
+ * tableta ancha con dedos necesita el área grande, y una ventana angosta en un
+ * escritorio con ratón no.
+ * ------------------------------------------------------------------------ */
+@media (pointer: coarse) {
+  .tap-target {
+    min-block-size: var(--control-height);
+  }
+
+  /* Los checkbox no se estiran: se les amplía el área con el padding del
+     label que los envuelve, para no deformar la casilla. */
+  .tap-target-box {
+    min-block-size: 24px;
+    min-inline-size: 24px;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Tablas que se apilan en pantallas angostas.
+ *
+ * Medido: la tabla de tags ocupaba 657 px dentro de un contenedor de 286 px, o
+ * sea 371 px escondidos tras un scroll horizontal. Leer una fila obligaba a
+ * arrastrar de lado y perder de vista la primera columna.
+ *
+ * Apiladas, cada fila pasa a ser una ficha y cada celda una línea con su
+ * etiqueta, tomada del encabezado con `data-label`. Es la conversión de
+ * horizontal a vertical, no una reducción de tamaño.
+ * ------------------------------------------------------------------------ */
+@media (max-width: 767px) {
+  .stacked-table thead {
+    /* `clip` en lugar de `display:none`: la cabecera sigue existiendo para
+       quien navega la tabla con lector de pantalla. */
+    position: absolute;
+    clip-path: inset(50%);
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+  }
+
+  .stacked-table table,
+  .stacked-table tbody,
+  .stacked-table tr,
+  .stacked-table td {
+    display: block;
+    inline-size: 100%;
+  }
+
+  .stacked-table tr {
+    border-block-end: 1px solid var(--border);
+    padding-block: 0.35rem;
+  }
+
+  .stacked-table tr:last-child {
+    border-block-end: 0;
+  }
+
+  .stacked-table td {
+    border: 0;
+    display: grid;
+    grid-template-columns: minmax(5.5rem, 34%) minmax(0, 1fr);
+    gap: 0.75rem;
+    align-items: baseline;
+    padding: 0.45rem 1rem;
+    /* Una URL o un correo largos no tienen espacios donde cortar: sin esto se
+       salen de la ficha y quedan ilegibles. */
+    overflow-wrap: anywhere;
+    /* Varias celdas usan `max-w-xs truncate` para que la fila no se estire en
+       escritorio. Apiladas hay ancho de sobra y recortar solo esconde el dato,
+       asi que se anula el recorte y el valor pasa a varias lineas. */
+    max-inline-size: none;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  .stacked-table td::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  /* Una celda sin etiqueta (acciones, por ejemplo) ocupa el ancho completo. */
+  .stacked-table td:not([data-label]) {
+    grid-template-columns: 1fr;
+  }
+
+  .stacked-table td:not([data-label])::before {
+    content: none;
+  }
+}
+
+/*
+ * Mismo apilado, un escalon mas arriba, para las tablas anchas.
+ *
+ * La de clientes tiene diez columnas: a 768px escondia 406px y a 1024px
+ * seguia escondiendo 98px. El corte esta en 1149px, que es el ancho medido a
+ * partir del cual esa tabla entra completa; las de cinco o seis columnas se
+ * quedan en `md`, que es donde de verdad dejan de caber.
+ */
+@media (max-width: 1149px) {
+  .stacked-table-lg thead {
+    /* `clip` en lugar de `display:none`: la cabecera sigue existiendo para
+       quien navega la tabla con lector de pantalla. */
+    position: absolute;
+    clip-path: inset(50%);
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+  }
+
+  .stacked-table-lg table,
+  .stacked-table-lg tbody,
+  .stacked-table-lg tr,
+  .stacked-table-lg td {
+    display: block;
+    inline-size: 100%;
+  }
+
+  .stacked-table-lg tr {
+    border-block-end: 1px solid var(--border);
+    padding-block: 0.35rem;
+  }
+
+  .stacked-table-lg tr:last-child {
+    border-block-end: 0;
+  }
+
+  .stacked-table-lg td {
+    border: 0;
+    display: grid;
+    grid-template-columns: minmax(5.5rem, 34%) minmax(0, 1fr);
+    gap: 0.75rem;
+    align-items: baseline;
+    padding: 0.45rem 1rem;
+    /* Una URL o un correo largos no tienen espacios donde cortar: sin esto se
+       salen de la ficha y quedan ilegibles. */
+    overflow-wrap: anywhere;
+    /* Varias celdas usan `max-w-xs truncate` para que la fila no se estire en
+       escritorio. Apiladas hay ancho de sobra y recortar solo esconde el dato,
+       asi que se anula el recorte y el valor pasa a varias lineas. */
+    max-inline-size: none;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  .stacked-table-lg td::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  /* Una celda sin etiqueta (acciones, por ejemplo) ocupa el ancho completo. */
+  .stacked-table-lg td:not([data-label]) {
+    grid-template-columns: 1fr;
+  }
+
+  .stacked-table-lg td:not([data-label])::before {
+    content: none;
+  }
+}
+
+/*
+ * Menos movimiento cuando el sistema lo pide.
+ *
+ * La excepción `html:not(.force-motion)` es la vista previa con `?motion=on`,
+ * que sirve para revisar el sitio desde una máquina con las animaciones del
+ * sistema apagadas. Se acota la regla en lugar de intentar revertirla después:
+ * bajo reduce-motion las animaciones ni siquiera se declaran, así que anular
+ * solo la duración no devolvería el movimiento.
+ *
+ * Ver `src/components/motion-preview.tsx`.
+ */
+@media (prefers-reduced-motion: reduce) {
+  html:not(.force-motion) *,
+  html:not(.force-motion) *::before,
+  html:not(.force-motion) *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Movimiento del sitio comercial.
+ *
+ * Todo es mejora progresiva: si el navegador no soporta la animación o la
+ * persona pidió menos movimiento, el contenido se ve igual, quieto. Nada queda
+ * oculto esperando a que algo se ejecute.
+ * ------------------------------------------------------------------------ */
+
+@keyframes tapgo-rise {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes tapgo-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-14px);
+  }
+}
+
+/* Ondas NFC que salen del teléfono. */
+@keyframes tapgo-ring {
+  0% {
+    transform: scale(0.75);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(2.1);
+    opacity: 0;
+  }
+}
+
+@keyframes tapgo-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(30px, -40px, 0) scale(1.12);
+  }
+}
+
+@keyframes tapgo-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/*
+ * Aparición al entrar en pantalla, con animaciones dirigidas por scroll. Solo
+ * se activa donde existe `animation-timeline`, así que no hace falta
+ * JavaScript ni hay riesgo de dejar texto invisible si algo falla.
+ */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal {
+      animation: tapgo-rise linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 30%;
+    }
+  }
+}
+
+/*
+ * Movimiento continuo bajo la vista previa `?motion=on`.
+ *
+ * Las declaraciones se repiten en lugar de extraerse a una clase común: una
+ * media query y un selector de clase no se combinan en una sola regla, y cuatro
+ * líneas duplicadas se leen mejor que una indirección.
+ */
+html.force-motion .float-slow {
+  animation: tapgo-float 6s ease-in-out infinite;
+}
+html.force-motion .nfc-ring {
+  animation: tapgo-ring 3s ease-out infinite;
+}
+html.force-motion .blob {
+  animation: tapgo-drift 18s ease-in-out infinite;
+}
+html.force-motion .marquee-track {
+  animation: tapgo-marquee 26s linear infinite;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .float-slow {
+    animation: tapgo-float 6s ease-in-out infinite;
+  }
+
+  .nfc-ring {
+    animation: tapgo-ring 3s ease-out infinite;
+  }
+
+  .blob {
+    animation: tapgo-drift 18s ease-in-out infinite;
+  }
+
+  /*
+   * 26s en lugar de 38s. A 38 segundos la cinta avanzaba unos 40 px por
+   * segundo: técnicamente se movía, pero a simple vista parecía quieta.
+   */
+  .marquee-track {
+    animation: tapgo-marquee 26s linear infinite;
+  }
+}
+
+/* Elevación al pasar el cursor sobre una tarjeta. */
+.lift {
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    border-color 0.25s ease;
+}
+
+.lift:hover {
+  transform: translateY(-4px);
+  border-color: var(--brand);
+  box-shadow: 0 12px 30px -12px color-mix(in oklab, var(--brand) 45%, transparent);
+}
+
+/* Texto con degradado de marca. */
+.brand-gradient-text {
+  background: linear-gradient(120deg, var(--brand) 0%, var(--brand-400) 60%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ---------------------------------------------------------------------------
+ * Secciones oscuras.
+ *
+ * En lugar de escribir colores fijos, se redefinen los tokens dentro del
+ * bloque: todas las utilidades que ya usan bg-surface, text-muted o
+ * border-border se adaptan solas. Funciona igual en tema claro y oscuro.
+ * ------------------------------------------------------------------------ */
+.on-dark {
+  --surface: #101b2d;
+  --surface-muted: #16233a;
+  --foreground: #eaf1fa;
+  --muted: #92a5bd;
+  --border: #26364f;
+  --brand: var(--brand-400);
+  --brand-strong: var(--brand-200);
+  --brand-contrast: #04201d;
+  --accent: #fbbf24;
+  --accent-strong: #f59e0b;
+  --accent-contrast: #1c1401;
+  --info-soft: #16314a;
+
+  background-color: #0a1424;
+  color: var(--foreground);
+}
+
+/* ---------------------------------------------------------------------------
+ * Efectos ligados al scroll.
+ * ------------------------------------------------------------------------ */
+
+@keyframes tapgo-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes tapgo-parallax {
+  to {
+    transform: translateY(-140px);
+  }
+}
+
+@keyframes tapgo-zoom {
+  from {
+    transform: scale(0.92);
+    opacity: 0.4;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/*
+ * Barra de progreso de lectura. Se muestra únicamente donde el navegador puede
+ * animarla con el scroll; en el resto no aparece, en vez de quedar fija llena.
+ */
+.scroll-progress {
+  display: none;
+}
+
+@supports (animation-timeline: scroll()) {
+  .scroll-progress {
+    position: fixed;
+    inset: 0 0 auto 0;
+    z-index: 50;
+    display: block;
+    height: 3px;
+    transform-origin: 0 50%;
+    background: linear-gradient(90deg, var(--brand-600), var(--brand-400));
+    animation: tapgo-progress linear;
+    animation-timeline: scroll(root block);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .parallax {
+      animation: tapgo-parallax linear;
+      animation-timeline: scroll(root block);
+    }
+
+    .zoom-in {
+      animation: tapgo-zoom linear both;
+      animation-timeline: view();
+      animation-range: entry 10% cover 45%;
+    }
+  }
+}
+
+/* Escalonado de la aparición dentro de una misma fila. */
+.reveal-2 {
+  animation-range: entry 6% cover 36%;
+}
+
+.reveal-3 {
+  animation-range: entry 12% cover 42%;
+}
+
+.reveal-4 {
+  animation-range: entry 18% cover 48%;
+}
+
+/* ---------------------------------------------------------------------------
+ * Respaldo para navegadores sin `animation-timeline` (Firefox, Safari).
+ *
+ * La clase `scroll-js` la agrega el componente ScrollEffects, y solo cuando el
+ * navegador no puede hacerlo por CSS. Sin JavaScript nada de esto se aplica y
+ * la página queda visible, que es el comportamiento correcto.
+ * ------------------------------------------------------------------------ */
+
+html.scroll-js .reveal,
+html.scroll-js .zoom-in {
+  opacity: 0;
+}
+
+html.scroll-js .reveal {
+  transform: translateY(24px);
+}
+
+html.scroll-js .zoom-in {
+  transform: scale(0.92);
+}
+
+html.scroll-js .reveal.is-visible {
+  animation: tapgo-rise 0.7s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+html.scroll-js .zoom-in.is-visible {
+  animation: tapgo-zoom 0.7s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+html.scroll-js .reveal-2.is-visible {
+  animation-delay: 0.1s;
+}
+
+html.scroll-js .reveal-3.is-visible {
+  animation-delay: 0.2s;
+}
+
+html.scroll-js .reveal-4.is-visible {
+  animation-delay: 0.3s;
+}
+
+html.scroll-js .scroll-progress {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 50;
+  display: block;
+  height: 3px;
+  transform: scaleX(var(--scroll-progress, 0));
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg, var(--brand-600), var(--brand-400));
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html.scroll-js .parallax {
+    transform: translateY(calc(var(--scroll-y, 0) * -0.08px));
+    will-change: transform;
+  }
+}
+
+/* Cinta que corre en sentido contrario. */
+/*
+ * Cintas cuando la persona pidió menos movimiento.
+ *
+ * Sin esto la cinta se quedaba congelada a mitad de recorrido: la primera y la
+ * última etiqueta aparecían cortadas contra el degradado de los bordes, y el
+ * resultado se leía como un fallo de maquetación en lugar de como una decisión.
+ *
+ * Quieta, se convierte en lo que siempre debió ser en ese caso: una lista
+ * centrada que se acomoda en varias líneas y muestra TODAS las opciones. Se
+ * oculta además la copia duplicada, que solo existe para que el bucle no tenga
+ * costura y es puro ruido si nada se desplaza.
+ */
+@media (prefers-reduced-motion: reduce) {
+  html:not(.force-motion) .marquee-shell {
+    /* El degradado de los bordes solo tiene sentido si algo entra y sale. */
+    mask-image: none !important;
+  }
+
+  html:not(.force-motion) .marquee-track {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  html:not(.force-motion) .marquee-track > [aria-hidden="true"] {
+    display: none;
+  }
+
+  /*
+   * La copia visible lleva `shrink-0` para que la cinta no se comprima
+   * mientras se desplaza. Quieta, ese mismo `shrink-0` impide que la lista se
+   * ajuste al ancho disponible y el contenido se sale por la derecha, que es
+   * justo lo que se ve congelado. Se le devuelve la capacidad de encogerse.
+   */
+  html:not(.force-motion) .marquee-track > div {
+    width: 100%;
+    flex-shrink: 1;
+    min-width: 0;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  html:not(.force-motion) .marquee-track ul {
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: 0.75rem;
+    padding-right: 0;
+  }
+}
+
+.marquee-reverse {
+  animation-direction: reverse;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* La navegación fija no debe tapar el título al saltar a una sección. */
+section[id] {
+  scroll-margin-top: 5rem;
+}
+
+/* ---------------------------------------------------------------------------
+ * Entrada de la landing pública (/t/[code]).
+ *
+ * Puramente CSS, sin IntersectionObserver: a diferencia del sitio comercial,
+ * acá todo el contenido entra en una sola pantalla corta, así que no hace
+ * falta animar "al hacer scroll" — solo una aparición suave al cargar. La
+ * regla `prefers-reduced-motion: reduce` de más arriba ya apaga esto sola.
+ */
+@keyframes landing-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-landing-in {
+  animation: landing-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-landing-in-delay-1 {
+  animation-delay: 0.08s;
+}
+
+.animate-landing-in-delay-2 {
+  animation-delay: 0.14s;
 }
