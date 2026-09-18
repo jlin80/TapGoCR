@@ -7,11 +7,22 @@
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  images: {
+    // `HeroSection` pide `quality={90}` para la foto de la placa: Next 16
+    // rechaza cualquier valor de `quality` no declarado acá.
+    qualities: [75, 90],
+  },
   experimental: {
     // Habilita `forbidden()`, que devuelve un 403 real en lugar de un 404 o una
     // redirección. Es el criterio de aceptación del panel de cliente: un CLIENT
     // que manipule la URL de otro negocio debe recibir 403.
     authInterrupts: true,
+    // Next.js corta el body de una Server Action en 1 MB por defecto, sin
+    // relación con `MAX_UPLOAD_BYTES` (que sí puede llegar a 10 MB, ver
+    // `lib/uploads.ts`). Sin esto, subir un logo o una portada que pese más
+    // de 1 MB tumbaba la request con un error genérico antes de que el
+    // código de validación llegara siquiera a ejecutarse.
+    serverActions: { bodySizeLimit: "10mb" },
   },
   // La landing pública puede llegar detrás de un reverse proxy; se confía en las
   // cabeceras estándar para resolver el host.

@@ -6,6 +6,7 @@ import { LinkIcon } from "@/components/link-icon";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CrossOriginLinkButton, cx, LinkButton } from "@/components/ui";
 import type { LinkType } from "@/generated/prisma/enums";
+import { appName } from "@/lib/config";
 
 /** Piezas visuales del sitio comercial. */
 
@@ -51,24 +52,18 @@ export function SiteHeader({ home = false }: { home?: boolean }) {
           >
             Cómo funciona
           </a>
-          <a
-            href={anchor("soluciones", home)}
-            className="hidden rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:text-foreground lg:block"
-          >
-            Soluciones
-          </a>
-          <a
-            href={anchor("industrias", home)}
-            className="hidden rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:text-foreground lg:block"
-          >
-            Para negocios
-          </a>
           <Link
             href="/precios"
             className="hidden rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:text-foreground md:block"
           >
-            Precios
+            Planes
           </Link>
+          <a
+            href={anchor("faq", home)}
+            className="hidden rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:text-foreground lg:block"
+          >
+            FAQ
+          </a>
           {/*
             En pantallas angostas el botón del hero ya cubre el contacto, así
             que acá se prioriza el acceso al panel.
@@ -137,8 +132,8 @@ export function SiteFooter({ home = false }: { home?: boolean }) {
           <a href={anchor("como-funciona", home)} className="hover:text-foreground">
             Cómo funciona
           </a>
-          <a href={anchor("soluciones", home)} className="hover:text-foreground">
-            Soluciones
+          <a href={anchor("beneficios", home)} className="hover:text-foreground">
+            Beneficios
           </a>
           <a href={anchor("paquetes", home)} className="hover:text-foreground">
             Paquetes
@@ -177,10 +172,24 @@ export function SiteFooter({ home = false }: { home?: boolean }) {
           </Link>
         </nav>
       </div>
+
+      <div className="mx-auto max-w-6xl px-5 pb-6 text-xs text-muted">
+        <p className="border-t border-white/10 pt-4">
+          © {COPYRIGHT_YEAR} {appName}. Todos los derechos reservados.
+        </p>
+      </div>
     </footer>
     </>
   );
 }
+
+/**
+ * Año fijo en vez de `new Date().getFullYear()`: llamarlo en el cuerpo de un
+ * componente dispara la regla `react-hooks/purity` (una función "impura" no
+ * puede invocarse durante el render). Actualizar un número una vez al año es
+ * menos costoso que introducir ese riesgo.
+ */
+const COPYRIGHT_YEAR = 2026;
 
 /** Barra de lectura fija en el borde superior. */
 export function ScrollProgress() {
@@ -366,10 +375,44 @@ export function Check() {
 }
 
 /**
+ * Cuántas veces se repite la secuencia de ítems dentro de cada una de las dos
+ * copias del track (ver `MarqueeShell`).
+ *
+ * El bucle sin costura funciona desplazando el track exactamente `-50%` de su
+ * propio ancho (la mitad "A" sale, la mitad "B" ocupa su lugar). Eso solo es
+ * imperceptible si UNA copia ya es más ancha que el viewport: si la lista de
+ * ítems es corta (pocos elementos, pantalla ancha), una sola copia mide menos
+ * que la pantalla y, cerca del final del ciclo, el track se queda sin
+ * contenido antes de completar el desplazamiento — se ve un hueco en blanco y
+ * un salto al reiniciar. Repetir la secuencia varias veces dentro de cada
+ * copia (siempre las mismas, nunca contenido distinto) hace que su ancho real
+ * sea mucho mayor que cualquier viewport probado (hasta 1920px), sin cambiar
+ * nada visualmente: una cinta infinita real ya repite su contenido.
+ */
+const MARQUEE_REPEAT = 3;
+
+/**
+ * Repite `items` `MARQUEE_REPEAT` veces, con una key estable por repetición.
+ *
+ * `rep` viaja como dato (no solo en la key) porque `prefers-reduced-motion`
+ * necesita esconder las repeticiones 1+ y quedarse solo con la 0: quieta, la
+ * cinta se convierte en una lista normal que no debe mostrar cada ítem tres
+ * veces (ver la regla `[data-rep]` en `globals.css`).
+ */
+function repeatSequence<T>(items: T[]): Array<{ item: T; key: string; rep: number }> {
+  return Array.from({ length: MARQUEE_REPEAT }, (_, rep) =>
+    items.map((item, index) => ({ item, key: `${rep}-${index}`, rep })),
+  ).flat();
+}
+
+/**
  * Cinta en movimiento continuo.
  *
- * La lista se duplica para que el bucle no tenga costura; la copia queda oculta
- * a los lectores de pantalla para no leer todo dos veces. Si la persona pidió
+ * La lista se duplica para que el bucle no tenga costura; ambas copias del
+ * track van marcadas `aria-hidden`, porque cada una repite la secuencia
+ * varias veces (ver `MARQUEE_REPEAT`) y un lector de pantalla no debe anunciar
+ * el mismo contenido de más — la información real vive en otra parte de la
+ * página (p. ej. las tarjetas de rubros bajo esta cinta). Si la persona pidió
  * menos movimiento, la cinta se queda quieta y sigue siendo legible.
  */
 function MarqueeShell({
@@ -380,10 +423,13 @@ function MarqueeShell({
   children: (copy: number) => ReactNode;
 }) {
   return (
-    <div className="marquee-shell relative flex overflow-hidden [mask-image:linear-gradient(90deg,transparent,black_6%,black_94%,transparent)]">
+    <div
+      aria-hidden="true"
+      className="marquee-shell relative flex overflow-hidden [mask-image:linear-gradient(90deg,transparent,black_6%,black_94%,transparent)]"
+    >
       <div className={cx("marquee-track flex w-max", reverse && "marquee-reverse")}>
         {[0, 1].map((copy) => (
-          <div key={copy} aria-hidden={copy === 1} className="flex shrink-0">
+          <div key={copy} data-copy={copy} className="flex shrink-0">
             {children(copy)}
           </div>
         ))}
@@ -413,6 +459,8 @@ export function Marquee({
   reverse?: boolean;
   plain?: boolean;
 }) {
+  const sequence = repeatSequence(items);
+
   return (
     <MarqueeShell reverse={reverse}>
       {() => (
@@ -422,8 +470,8 @@ export function Marquee({
             plain ? "gap-3 pr-3 sm:gap-4 sm:pr-4" : "gap-2.5 pr-2.5 sm:gap-3 sm:pr-3",
           )}
         >
-          {items.map((item, index) => (
-            <li key={item} className="flex items-center gap-3 sm:gap-4">
+          {sequence.map(({ item, key, rep }, index) => (
+            <li key={key} data-rep={rep} className="flex items-center gap-3 sm:gap-4">
               <span
                 className={cx(
                   "whitespace-nowrap",
@@ -436,7 +484,7 @@ export function Marquee({
               </span>
               {/* El punto separador no va después del último: cerraría la
                   frase con un punto suelto antes de que la copia se repita. */}
-              {plain && index < items.length - 1 ? (
+              {plain && index < sequence.length - 1 ? (
                 <span aria-hidden="true" className="text-muted">
                   ·
                 </span>
@@ -457,13 +505,16 @@ export function IconMarquee({
   items: Array<{ type: LinkType; label: string }>;
   reverse?: boolean;
 }) {
+  const sequence = repeatSequence(items);
+
   return (
     <MarqueeShell reverse={reverse}>
       {() => (
         <ul className="flex items-center gap-6 pr-6 sm:gap-10 sm:pr-10">
-          {items.map((item) => (
+          {sequence.map(({ item, key, rep }) => (
             <li
-              key={item.label}
+              key={key}
+              data-rep={rep}
               className="flex items-center gap-2.5 text-base font-medium whitespace-nowrap sm:gap-3 sm:text-lg"
             >
               <span className="text-brand">

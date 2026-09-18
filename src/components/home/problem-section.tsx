@@ -1,55 +1,37 @@
-import { Check, SectionHeading } from "@/components/marketing";
+import { SectionHeading } from "@/components/marketing";
 
-const SCATTERED = ["Menú", "Instagram", "WhatsApp", "Google", "Ubicación"];
+/**
+ * Vende el problema, no la placa otra vez — el hero ya mostró el producto.
+ * Esta sección responde "¿por qué lo necesito?" antes de explicar cómo
+ * funciona. Los puntos de contacto listados son enlaces reales que TapGoCR
+ * ya soporta (ver `LinkType` en el schema), nada inventado.
+ */
+const SCATTERED = ["WhatsApp", "Instagram", "Menú", "Google Maps", "Sitio web", "Reseñas"];
 
-const AFTER = [
-  "El mismo código de siempre, contenido que actualizás vos",
-  "Un solo código con todo: menú, WhatsApp, redes, ubicación, reseñas",
-  "Analytics de qué botón toca la gente y cuándo",
-];
-
-/** El problema real: la información del negocio dispersa en cinco lugares. */
 export function ProblemSection() {
   return (
-    <section className="on-dark border-b border-border">
-      <div className="mx-auto max-w-5xl px-5 py-20 sm:py-24 lg:py-28">
+    <section className="border-b border-border bg-surface-muted">
+      <div className="mx-auto max-w-3xl px-5 py-16 text-center sm:py-20 lg:py-24">
         <SectionHeading
           eyebrow="El problema"
-          title="Tu cliente no debería tener que buscarte."
-          description="Hoy tu menú, tus redes, tu WhatsApp y tu ubicación están repartidos en lugares distintos. TapGoCR los reúne en un solo lugar."
+          title="Tu negocio está repartido en demasiados lugares."
+          description="Tu cliente tiene que buscar tu WhatsApp, encontrar tu Instagram, pedir la dirección y esperar el menú por separado. Cada paso de más es una persona que se cansa antes de llegar."
         />
 
-        <div className="mt-12 grid gap-6 sm:mt-16 lg:grid-cols-2">
-          <div className="reveal rounded-3xl border border-border bg-surface-muted p-7 sm:p-10">
-            <h3 className="text-sm font-semibold tracking-widest text-muted uppercase">
-              Hoy, separado
-            </h3>
-            <ul className="mt-6 flex flex-col gap-4">
-              {SCATTERED.map((item) => (
-                <li key={item} className="flex items-center gap-2.5 text-muted">
-                  <span aria-hidden="true" className="mt-0.5 text-base leading-none text-muted">
-                    ✕
-                  </span>
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="reveal reveal-2 lift rounded-3xl border-2 border-brand bg-surface p-7 sm:p-10">
-            <h3 className="text-sm font-semibold tracking-widest text-brand uppercase">
-              Con TapGoCR
-            </h3>
-            <ul className="mt-6 flex flex-col gap-4">
-              {AFTER.map((item) => (
-                <li key={item} className="flex items-start gap-2.5">
-                  <Check />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+        <div className="reveal mt-10 flex flex-wrap justify-center gap-2">
+          {SCATTERED.map((item) => (
+            <span
+              key={item}
+              className="rounded-full border border-dashed border-border px-4 py-2 text-sm text-muted"
+            >
+              {item}
+            </span>
+          ))}
         </div>
+
+        <p className="reveal mt-8 text-base font-medium text-pretty sm:text-lg">
+          TapGoCR concentra todo eso en un solo lugar: tu placa.
+        </p>
       </div>
     </section>
   );

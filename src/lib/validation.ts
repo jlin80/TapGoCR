@@ -248,6 +248,21 @@ export const businessFileLinkSchema = z.object({
   active: checkbox,
 });
 
+/**
+ * Foto de la galería social ("Seguinos").
+ *
+ * Sin `imageUrl`: siempre se sube como archivo (ver `businessFileLinkSchema`,
+ * mismo criterio) — nunca se pega la URL de una imagen alojada en otro lado.
+ * `linkUrl` es opcional porque una foto puede ser solo decorativa.
+ */
+export const socialPostSchema = z.object({
+  linkUrl: optionalUrlField,
+  platform: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.enum(LinkType).optional(),
+  ),
+});
+
 export const tagSchema = z.object({
   name: trimmed(60).min(1, "Escribí un nombre para el tag."),
   locationLabel: optionalText(80),
@@ -427,6 +442,26 @@ export const contactSchema = z.object({
     z.enum(Industry).optional(),
   ),
   goal: optionalText(120),
+  website: z.string().max(200).optional(),
+});
+
+/**
+ * Feedback interno (rating + comentario) enviado desde `/t/[code]/feedback`.
+ *
+ * `code` identifica la placa; el negocio se resuelve del lado del servidor a
+ * partir de ese código, nunca de un `businessId` que llegara del formulario —
+ * mismo criterio que el redirector `/t/[code]/go/[linkId]`. `website` es el
+ * campo trampa de siempre.
+ */
+export const feedbackSchema = z.object({
+  code: trimmed(32).min(6, "Código inválido."),
+  rating: z.coerce
+    .number()
+    .int("Elegí una calificación.")
+    .min(1, "Elegí una calificación.")
+    .max(5, "Elegí una calificación."),
+  comment: optionalText(300),
+  source: z.enum(["qr", "tap"]).optional(),
   website: z.string().max(200).optional(),
 });
 

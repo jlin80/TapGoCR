@@ -1,42 +1,59 @@
-import { SectionHeading, Step } from "@/components/marketing";
+import { SectionHeading } from "@/components/marketing";
 
 /**
- * "Vos no configurás nada": el mensaje comercial más importante de la
- * página, según su propio peso en el funnel — por eso son 6 pasos concretos
- * y no una promesa vaga. Mismo componente `Step` que ya usaba la versión de
- * 3 pasos; el contenido cambió, no el slot que ocupa en la página.
+ * Reemplaza tres secciones que decían variaciones de lo mismo (TAP→GO, "vos
+ * no configurás nada" en 6 pasos, el selector de objetivos): un solo gráfico
+ * horizontal de 3 pasos. El mensaje comercial ("nosotros configuramos todo")
+ * queda como una frase corta en el paso 2, no como una lista de 6 tarjetas.
  */
+const STEPS = [
+  {
+    number: "01",
+    title: "Tocás o escaneás",
+    body: "NFC o QR, en la misma placa.",
+  },
+  {
+    number: "02",
+    title: "Se abre tu página",
+    body: "Sin descargar nada. Nosotros la configuramos por vos.",
+  },
+  {
+    number: "03",
+    title: "Elegís qué hacer",
+    body: "Menú, WhatsApp, redes, reseñas o cómo llegar.",
+  },
+] as const;
+
 export function HowItWorksSection() {
   return (
     <section id="como-funciona" className="border-b border-border bg-surface-muted">
-      <div className="mx-auto max-w-5xl px-5 py-20 sm:py-24 lg:py-28">
-        <SectionHeading
-          eyebrow="Cómo funciona"
-          title="Vos no configurás nada."
-          description="Vos elegís qué querés. Nosotros hacemos el resto."
-        />
+      <div className="mx-auto max-w-5xl px-5 py-16 sm:py-20 lg:py-24">
+        <SectionHeading eyebrow="Cómo funciona" title="Tocá. Se abre. Elegís." />
 
-        <ol className="mt-12 grid gap-5 sm:mt-16 sm:grid-cols-2 lg:grid-cols-3">
-          <Step number={1} title="Elegís">
-            Decidís qué querés que haga tu TapGo: menú, WhatsApp, reseñas, redes o
-            varias cosas a la vez.
-          </Step>
-          <Step number={2} title="Nos pasás tu información" delay={2}>
-            Logo, enlaces, menú, WhatsApp, redes — lo que ya tengas.
-          </Step>
-          <Step number={3} title="Diseñamos" delay={3}>
-            Creamos una experiencia alineada con tu marca.
-          </Step>
-          <Step number={4} title="Configuramos" delay={4}>
-            Programamos el NFC, el QR y tu experiencia digital.
-          </Step>
-          <Step number={5} title="Recibís" delay={4}>
-            Tu TapGo listo para usar, sin nada más que hacer de tu lado.
-          </Step>
-          <Step number={6} title="TAP → GO" delay={4}>
-            Tu cliente acerca el teléfono o escanea, y la acción ocurre al instante.
-          </Step>
+        <ol className="reveal mt-12 grid gap-4 sm:mt-14 sm:grid-cols-3">
+          {STEPS.map((step, index) => (
+            <li key={step.number} className="relative flex flex-col gap-3 rounded-2xl border border-border bg-surface p-6">
+              <span className="font-[family-name:var(--font-display)] text-3xl font-extrabold text-brand/30">
+                {step.number}
+              </span>
+              <h3 className="text-lg font-semibold">{step.title}</h3>
+              <p className="text-sm text-muted">{step.body}</p>
+
+              {index < STEPS.length - 1 ? (
+                <span
+                  aria-hidden="true"
+                  className="absolute top-1/2 -right-2 hidden -translate-y-1/2 text-2xl text-brand/40 sm:block"
+                >
+                  →
+                </span>
+              ) : null}
+            </li>
+          ))}
         </ol>
+
+        <p className="reveal mt-8 text-center text-sm text-muted">
+          ¿Su teléfono no tiene NFC? Escaneá el QR — la misma placa lleva a la misma página.
+        </p>
       </div>
     </section>
   );

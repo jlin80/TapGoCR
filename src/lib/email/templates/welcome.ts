@@ -1,7 +1,7 @@
-import { appName, tapgoOrigin } from "@/lib/config";
+import { appName, appOrigin, tapgoOrigin } from "@/lib/config";
 import { renderEmailHtml } from "@/lib/email/layout";
 
-const ADMIN_ORIGIN = tapgoOrigin.replace(/^https?:\/\//, "https://app.");
+const ADMIN_ORIGIN = appOrigin;
 
 /** USER_CREATED → cliente. */
 export function welcomeEmail(params: { name: string; clientCode: string }) {

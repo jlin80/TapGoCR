@@ -186,9 +186,14 @@ async function finalizeRegistration(
   // Discord solo si todo se guardó bien.
   let createdUserId = "";
   let createdBusinessId = "";
+  // Diagnóstico temporal: para saber en qué paso concreto falló sin tener
+  // que adivinar. Nunca contiene contraseñas ni hashes.
+  let step = "start";
 
   try {
+    step = "acquire-lock";
     await withNameLock(registration.businessName, async (tx) => {
+      step = "recheck-name-conflict";
       // Re-verificado dentro del lock: dos altas concurrentes con el mismo
       // nombre ya no pueden leer ambas "libre" antes de que cualquiera cree
       // su fila.
@@ -203,6 +208,7 @@ async function finalizeRegistration(
         );
       }
 
+      step = "create-user";
       const user = await tx.user.create({
         data: {
           email: registration.email,
@@ -215,6 +221,7 @@ async function finalizeRegistration(
         select: { id: true },
       });
 
+      step = "create-business";
       const business = await tx.business.create({
         data: {
           name: registration.businessName,
@@ -269,6 +276,7 @@ async function finalizeRegistration(
       }
 
       if (enlacesIniciales.length > 0) {
+        step = "create-initial-links";
         await tx.businessLink.createMany({
           data: enlacesIniciales.map((link, position) => ({
             ...link,
@@ -278,6 +286,7 @@ async function finalizeRegistration(
         });
       }
 
+      step = "update-registration";
       await tx.registration.update({
         where: { id: registration.id },
         data: {
@@ -295,8 +304,42 @@ async function finalizeRegistration(
     });
   } catch (error) {
     if (error instanceof NameConflictError) return { error: error.message };
-    // La causa habitual es una colisión en el código de cliente o en el slug
-    // entre el cálculo y la inserción. Reintentar resuelve; duplicar no.
+
+    // Diagnóstico temporal: nunca se loguea passwordHash ni ningún secreto,
+    // solo identificadores y el error real (código/mensaje de Prisma o de
+    // MariaDB) para saber qué paso falló en producción en vez de adivinar.
+    const prismaCode =
+      error && typeof error === "object" && "code" in error
+        ? String((error as { code: unknown }).code)
+        : undefined;
+    const prismaMeta =
+      error && typeof error === "object" && "meta" in error
+        ? (error as { meta: unknown }).meta
+        : undefined;
+
+    console.error("[registration-approve] fallo en finalizeRegistration", {
+      registrationId: registration.id,
+      email: registration.email,
+      businessName: registration.businessName,
+      reviewedBy,
+      step,
+      clientCode,
+      slug,
+      errorCode: prismaCode,
+      errorMeta: prismaMeta,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorStack: error instanceof Error ? error.stack : undefined,
+    });
+
+    if (prismaCode === "P2002") {
+      // Unique constraint: casi seguro clientCode o slug calculados antes del
+      // lock, que otra alta ya tomó entre el cálculo y el insert.
+      return {
+        error:
+          "No se pudo completar el alta: el código de cliente o el identificador del negocio ya estaban en uso. Volvé a intentarlo.",
+      };
+    }
+
     return { error: "No se pudo completar el alta. Volvé a intentarlo." };
   }
 

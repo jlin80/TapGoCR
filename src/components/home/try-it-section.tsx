@@ -43,7 +43,7 @@ export function TryItSection() {
 
   return (
     <section className="border-b border-border bg-surface-muted">
-      <div className="mx-auto max-w-4xl px-5 py-20 sm:py-24 lg:py-28">
+      <div className="mx-auto max-w-4xl px-5 py-16 sm:py-20 lg:py-24">
         <SectionHeading
           eyebrow="Probalo vos mismo"
           title="No tenés que imaginártelo."

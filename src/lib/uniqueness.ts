@@ -127,17 +127,27 @@ export async function withNameLock<T>(
 ): Promise<T> {
   const normalized = normalizeName(name);
   const lockName = hashName(normalized);
-  return prisma.$transaction(async (tx) => {
-    const [{ acquired }] = await tx.$queryRaw<[{ acquired: number }]>`
+  return prisma.$transaction(
+    async (tx) => {
+      const [{ acquired }] = await tx.$queryRaw<[{ acquired: number }]>`
       SELECT GET_LOCK(${lockName}, 10) AS acquired
     `;
-    if (acquired !== 1) {
-      throw new Error(`No se pudo obtener el lock de nombre "${lockName}" a tiempo`);
-    }
-    try {
-      return await fn(tx);
-    } finally {
-      await tx.$executeRaw`SELECT RELEASE_LOCK(${lockName})`;
-    }
-  });
+      if (acquired !== 1) {
+        throw new Error(`No se pudo obtener el lock de nombre "${lockName}" a tiempo`);
+      }
+      try {
+        return await fn(tx);
+      } finally {
+        await tx.$executeRaw`SELECT RELEASE_LOCK(${lockName})`;
+      }
+    },
+    // GET_LOCK espera hasta 10s por sí solo. El timeout por defecto de una
+    // transacción interactiva de Prisma es 5s: si el lock tarda en liberarse
+    // (otra aprobación en curso, o simple latencia de red hacia la base), la
+    // transacción entera se cerraba sola ANTES de que GET_LOCK terminara,
+    // con un error genérico ("Transaction already closed") que no tenía nada
+    // que ver con el nombre ni con datos duplicados. Se da margen a que
+    // GET_LOCK complete su propia espera de 10s más el resto del trabajo.
+    { maxWait: 15_000, timeout: 20_000 },
+  );
 }

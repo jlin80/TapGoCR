@@ -22,7 +22,8 @@ import { cx } from "@/components/ui";
 
 export type Stat = {
   label: string;
-  value: number;
+  /** Casi siempre un número; texto ya formateado (p. ej. "4.5" o "—") cuando no aplica `toLocaleString`. */
+  value: number | string;
   hint?: string;
   /** Enlace a la sección que desarrolla esa cifra. */
   href?: string;
@@ -42,7 +43,9 @@ export function StatRail({ stats }: { stats: Stat[] }) {
         const contenido = (
           <>
             <p className="stat-label">{stat.label}</p>
-            <p className="stat-value mt-2">{stat.value.toLocaleString("es-CR")}</p>
+            <p className="stat-value mt-2">
+              {typeof stat.value === "number" ? stat.value.toLocaleString("es-CR") : stat.value}
+            </p>
             {stat.hint ? (
               <p className="mt-1.5 text-xs text-muted">{stat.hint}</p>
             ) : null}

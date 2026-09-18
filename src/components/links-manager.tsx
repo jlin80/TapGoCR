@@ -2,8 +2,8 @@ import { ActionForm } from "@/components/action-form";
 import { AddLinkCard } from "@/components/add-link-card";
 import { SubmitButton } from "@/components/confirm-button";
 import { LinkIcon } from "@/components/link-icon";
-import { Badge, Card, Checkbox, EmptyState, Field, Input, Select } from "@/components/ui";
-import type { LinkType } from "@/generated/prisma/enums";
+import { Badge, Card, Checkbox, EmptyState, Field, Input, LinkButton, Select } from "@/components/ui";
+import { LinkType } from "@/generated/prisma/enums";
 import { LINK_TYPE_LABELS, LINK_TYPE_ORDER } from "@/lib/link-types";
 import { MAX_UPLOAD_BYTES } from "@/lib/uploads";
 import {
@@ -123,7 +123,14 @@ export function LinksManager({
                         </Field>
                       </div>
 
-                      <Field label="URL">
+                      <Field
+                        label="URL"
+                        hint={
+                          link.type === LinkType.GOOGLE_REVIEWS
+                            ? "Este enlace se abrirá cuando un cliente quiera publicar su experiencia en Google, después de dejar su feedback en TapGoCR."
+                            : undefined
+                        }
+                      >
                         <Input
                           name="url"
                           required
@@ -131,6 +138,12 @@ export function LinksManager({
                           defaultValue={link.url}
                         />
                       </Field>
+
+                      {link.type === LinkType.GOOGLE_REVIEWS && link.url ? (
+                        <LinkButton href={link.url} target="_blank" rel="noopener noreferrer">
+                          Probar enlace
+                        </LinkButton>
+                      ) : null}
 
                       <label className="flex items-center gap-2 text-sm">
                         <Checkbox name="active" defaultChecked={link.active} />

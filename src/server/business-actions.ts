@@ -10,6 +10,7 @@ import { notifyAdminAction } from "@/lib/discord/events";
 import { emitPlanChanged } from "@/lib/notifications/dispatch";
 import { prisma } from "@/lib/prisma";
 import { businessNameTaken, NameConflictError, withNameLock } from "@/lib/uniqueness";
+import { resolveImageField } from "@/lib/uploads";
 import { businessSchema, firstIssue, formValues } from "@/lib/validation";
 
 /**
@@ -78,13 +79,28 @@ export async function updateBusiness(
   }
 
   // Se lee antes del `update`: es la única forma de saber si el plan
-  // realmente cambió, y de qué a qué, para dejarlo en la bitácora.
+  // realmente cambió (para la bitácora), y cuál era el logo/portada previos
+  // (para borrarlos del disco si un archivo nuevo los reemplaza).
   const previous = await prisma.business.findUnique({
     where: { id: businessId },
-    select: { plan: true },
+    select: { plan: true, logoUrl: true, coverUrl: true },
   });
 
-  await prisma.business.update({ where: { id: businessId }, data: parsed.data });
+  // El formulario ya no tiene un campo de URL para el logo/portada (solo
+  // "subí un archivo"): sin un archivo nuevo, `fallbackUrl` tiene que ser lo
+  // que ya había guardado, nunca `parsed.data.logoUrl` — ese campo ya no
+  // existe en el form y siempre llegaría `null`, borrando la imagen actual
+  // en cada guardado.
+  const [logo, cover] = await Promise.all([
+    resolveImageField(formData, "logoFile", businessId, previous?.logoUrl ?? null, previous?.logoUrl ?? null),
+    resolveImageField(formData, "coverFile", businessId, previous?.coverUrl ?? null, previous?.coverUrl ?? null),
+  ]);
+  if (logo.error) return { error: logo.error };
+  if (cover.error) return { error: cover.error };
+
+  const data = { ...parsed.data, logoUrl: logo.url, coverUrl: cover.url };
+
+  await prisma.business.update({ where: { id: businessId }, data });
 
   if (previous && previous.plan !== parsed.data.plan) {
     await recordAudit({

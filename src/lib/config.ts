@@ -30,12 +30,31 @@ export const tapgoProtocol =
 /** Origen público completo. Ej.: `https://tapgocr.com`. */
 export const tapgoOrigin = `${tapgoProtocol}://${tapgoDomain}`;
 
+/**
+ * Los tres subdominios tienen un rol fijo y excluyente (ver `proxy.ts`, que
+ * redirige cualquier ruta que aparezca en el dominio que no le corresponde):
+ * `tapgoDomain` es solo la landing pública, `tagDomain` (`go.`) es solo las
+ * páginas de tag (`/t/{code}` — la URL que se programa en el NFC/QR) y
+ * `appDomain` (`app.`) es solo login, registro y los paneles.
+ *
+ * En local (`localhost:3000`) no tiene sentido separar subdominios — no hay
+ * DNS real ni certificados para `go.localhost:3000` — así que las tres
+ * constantes colapsan al mismo origen y `proxy.ts` no aplica la separación.
+ */
+const isLocalDomain = tapgoDomain.startsWith("localhost");
+
+export const tagDomain = isLocalDomain ? tapgoDomain : `go.${tapgoDomain}`;
+export const appDomain = isLocalDomain ? tapgoDomain : `app.${tapgoDomain}`;
+
+export const tagOrigin = `${tapgoProtocol}://${tagDomain}`;
+export const appOrigin = `${tapgoProtocol}://${appDomain}`;
+
 /** Mostrar "Powered by TapGoCR" en el pie de la landing pública. */
 export const showBranding = process.env.NEXT_PUBLIC_TAPGO_SHOW_BRANDING !== "false";
 
 /** URL pública de un tag. Es la que se programa en el NFC, sin parámetros. */
 export function tagUrl(code: string): string {
-  return `${tapgoOrigin}/t/${code}`;
+  return `${tagOrigin}/t/${code}`;
 }
 
 /**

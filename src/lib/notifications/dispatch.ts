@@ -15,7 +15,7 @@
  * de `src/lib/discord/events.ts` de siempre, solo que ahora las llama el
  * dispatcher en vez de que cada server action las importe directo.
  */
-import { appName, tapgoOrigin } from "@/lib/config";
+import { appName, appOrigin } from "@/lib/config";
 import {
   notifyContactLead as discordContactLead,
   notifyNewClient as discordNewClient,
@@ -31,7 +31,7 @@ import { welcomeEmail } from "@/lib/email/templates/welcome";
 import { sendEmailNotification } from "@/lib/email/service";
 import { INTERNAL_EMAIL } from "@/lib/email/recipients";
 
-const ADMIN_ORIGIN = tapgoOrigin.replace(/^https?:\/\//, "https://app.");
+const ADMIN_ORIGIN = appOrigin;
 
 /** Nunca deja que un consumidor tumbe al otro ni que el error suba más arriba. */
 async function settleAll(tasks: Array<Promise<unknown>>): Promise<void> {

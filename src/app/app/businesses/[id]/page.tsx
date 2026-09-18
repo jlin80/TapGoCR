@@ -3,11 +3,13 @@ import type { Metadata } from "next";
 import { ActionForm } from "@/components/action-form";
 import { BusinessFields } from "@/components/business-fields";
 import { SubmitButton } from "@/components/confirm-button";
+import { GalleryManager } from "@/components/gallery-manager";
 import { LinksManager } from "@/components/links-manager";
 import { MenuManager } from "@/components/menu-manager";
 import { Badge, Card, Field, Select } from "@/components/ui";
 import { BusinessRole, UserRole } from "@/generated/prisma/enums";
 import { requireBusinessAccess } from "@/lib/authz";
+import { galleryFor } from "@/lib/gallery";
 import { manageableMenu } from "@/lib/menu";
 import { prisma } from "@/lib/prisma";
 import { updateBusiness, toggleBusinessActive } from "@/server/business-actions";
@@ -27,7 +29,7 @@ export default async function BusinessDetailPage({
   const { id } = await params;
   await requireBusinessAccess(id);
 
-  const [business, assignableUsers, menuCategories] = await Promise.all([
+  const [business, assignableUsers, menuCategories, socialPosts] = await Promise.all([
     prisma.business.findUniqueOrThrow({
       where: { id },
       select: {
@@ -70,6 +72,7 @@ export default async function BusinessDetailPage({
       select: { id: true, name: true, email: true },
     }),
     manageableMenu(id),
+    galleryFor(id),
   ]);
 
   return (
@@ -97,7 +100,7 @@ export default async function BusinessDetailPage({
             }
           >
             <input type="hidden" name="businessId" value={business.id} />
-            <BusinessFields values={business} />
+            <BusinessFields values={business} businessId={business.id} />
           </ActionForm>
         </Card>
       </section>
@@ -117,6 +120,15 @@ export default async function BusinessDetailPage({
           digital de TapGoCR».
         </p>
         <MenuManager businessId={business.id} categories={menuCategories} />
+      </section>
+
+      <section>
+        <h2 className="mb-1 text-lg font-semibold">Galería</h2>
+        <p className="mb-3 text-sm text-muted">
+          Fotos de Instagram/TikTok cargadas a mano, para que la página no
+          mande al cliente fuera de TapGo sin volver.
+        </p>
+        <GalleryManager businessId={business.id} posts={socialPosts} />
       </section>
 
       <section>

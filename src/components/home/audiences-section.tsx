@@ -14,14 +14,10 @@ import { INDUSTRIES } from "@/lib/industries";
 const AUDIENCES = [
   "Restaurantes",
   "Cafeterías",
-  "Bares",
-  "Sodas",
   "Barberías y salones",
   "Hoteles y hospedajes",
   "Tiendas",
   "Gimnasios",
-  "Clínicas dentales",
-  "Ferias y emprendimientos",
 ];
 
 /**
@@ -31,7 +27,7 @@ const AUDIENCES = [
  */
 export function AudiencesSection() {
   return (
-    <section id="industrias" className="border-b border-border bg-surface-muted py-20 sm:py-24 lg:py-28">
+    <section id="industrias" className="border-b border-border bg-surface-muted py-16 sm:py-20 lg:py-24">
       <div className="mx-auto max-w-4xl px-5">
         <SectionHeading
           eyebrow="Casos de uso"

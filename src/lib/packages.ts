@@ -37,7 +37,7 @@ export const PACKAGES: PackageDetail[] = [
     name: "NFC + QR",
     tagline: "Lo mínimo para que tus clientes lleguen a todo tu negocio con un toque.",
     includes: [
-      "Placas o stickers con NFC y QR",
+      "Placas con NFC y QR",
       "Landing del negocio",
       "Enlaces ilimitados",
     ],
@@ -45,7 +45,7 @@ export const PACKAGES: PackageDetail[] = [
       {
         title: "Placas físicas instaladas",
         description:
-          "Placas o stickers con chip NFC y código QR impreso, colocados donde tenga sentido: mesas, barra, entrada o vitrina. Las dos vías llevan al mismo lugar, así que funciona igual con teléfonos que tienen NFC y con los que no.",
+          "Placas con chip NFC y código QR impreso, colocadas donde tenga sentido: mesas, barra, entrada o vitrina. Las dos vías llevan al mismo lugar, así que funciona igual con teléfonos que tienen NFC y con los que no.",
       },
       {
         title: "Tu página pública",

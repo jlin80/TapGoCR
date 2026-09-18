@@ -137,6 +137,36 @@ export function contentTypeFor(filename: string): string {
 }
 
 /**
+ * Resuelve un campo de imagen que admite subir un archivo "en vez de" pegar
+ * una URL (logo, portada): si `fieldName` trae un archivo en el `FormData`,
+ * lo sube y borra el anterior si era uno propio; si no trae nada, devuelve
+ * `fallbackUrl` tal cual (lo que la persona haya escrito a mano). El archivo
+ * siempre gana sobre la URL pegada — usado tanto por el alta/edición de
+ * negocio de ROOT como por "Mi página pública" del propio negocio.
+ */
+export async function resolveImageField(
+  formData: FormData,
+  fieldName: string,
+  businessId: string,
+  fallbackUrl: string | null,
+  previousUrl: string | null,
+): Promise<{ url: string | null; error?: string }> {
+  const file = formData.get(fieldName);
+  if (!(file instanceof File) || file.size === 0) {
+    return { url: fallbackUrl };
+  }
+  if (!file.type.startsWith("image/")) {
+    return { url: fallbackUrl, error: "Subí una imagen: JPG, PNG o WEBP." };
+  }
+
+  const uploaded = await saveUpload(businessId, file);
+  if (!uploaded.ok) return { url: fallbackUrl, error: uploaded.reason };
+
+  if (previousUrl) await deleteUploadIfOwned(previousUrl);
+  return { url: uploaded.url };
+}
+
+/**
  * Borra el archivo que respalda la URL de un enlace, si es uno de los que
  * subió el propio negocio. Un enlace externo (WhatsApp, Instagram, un PDF en
  * otro sitio) no tiene nada que borrar acá.

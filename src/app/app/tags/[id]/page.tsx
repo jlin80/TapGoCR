@@ -146,7 +146,7 @@ export default async function TagDetailPage({ params }: PageProps<"/app/tags/[id
             <ol className="mt-5 list-decimal space-y-1 pl-5 text-sm text-muted">
               <li>Copiar la URL.</li>
               <li>Programarla en el NFC (NTAG213/215/216) como registro URL.</li>
-              <li>Imprimir el QR sobre la placa o el sticker.</li>
+              <li>Imprimir el QR sobre la placa.</li>
               <li>Instalar y probar abriendo la landing.</li>
             </ol>
           </Card>

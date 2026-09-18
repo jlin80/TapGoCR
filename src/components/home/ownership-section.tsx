@@ -1,30 +1,27 @@
 import { Check, SectionHeading } from "@/components/marketing";
 
 /**
- * El concepto comercial central: el precio tiene dos partes bien distintas
- * (producto físico, pago único / plataforma digital, mensualidad), y hay que
- * dejarlo clarísimo antes de que la persona vea una cifra. Va justo después
- * del hero porque es lo primero que hay que entender antes de ver precios o
- * funciones.
+ * "Placa vs plataforma": separa con claridad qué corresponde al pago único
+ * y qué a la mensualidad. Va justo después de precios — ahí es cuando la
+ * persona necesita esta distinción, no antes de ver una cifra.
  */
-const PHYSICAL = ["Placa personalizada", "Chip NFC", "Código QR", "Diseño", "Configuración inicial"];
+const PHYSICAL = ["Placa física", "NFC", "QR", "Personalización", "Configuración"];
 
-const DIGITAL = ["Página digital", "Analytics", "Dashboard", "Actualizaciones", "Hosting", "Soporte"];
+const DIGITAL = ["Página digital", "Administración", "Actualizaciones", "Analytics"];
 
 export function OwnershipSection() {
   return (
     <section className="border-b border-border bg-surface-muted">
-      <div className="mx-auto max-w-5xl px-5 py-20 sm:py-24 lg:py-28">
+      <div className="mx-auto max-w-5xl px-5 py-16 sm:py-20 lg:py-24">
         <SectionHeading
-          eyebrow="Qué estás comprando"
-          title="Comprás tu placa. Es tuya."
-          description="El pago inicial cubre tu placa. La mensualidad mantiene tu plataforma funcionando."
+          eyebrow="Placa vs plataforma"
+          title="Tu placa es tuya. La plataforma mantiene tu experiencia actualizada."
         />
 
         <div className="mt-12 grid gap-6 sm:mt-16 lg:grid-cols-2">
           <div className="reveal rounded-3xl border border-border bg-surface p-7 sm:p-10">
             <h3 className="text-sm font-semibold tracking-widest text-muted uppercase">
-              Tu producto físico
+              Tu placa
             </h3>
             <p className="mt-2 text-2xl font-semibold tracking-tight">Pago inicial</p>
             <ul className="mt-6 flex flex-col gap-3.5">
@@ -39,9 +36,9 @@ export function OwnershipSection() {
 
           <div className="reveal reveal-2 lift rounded-3xl border-2 border-brand bg-surface p-7 sm:p-10">
             <h3 className="text-sm font-semibold tracking-widest text-brand uppercase">
-              Tu plataforma digital
+              Tu plataforma
             </h3>
-            <p className="mt-2 text-2xl font-semibold tracking-tight">Mensualidad</p>
+            <p className="mt-2 text-2xl font-semibold tracking-tight">Pago mensual</p>
             <ul className="mt-6 flex flex-col gap-3.5">
               {DIGITAL.map((item) => (
                 <li key={item} className="flex items-start gap-2.5">

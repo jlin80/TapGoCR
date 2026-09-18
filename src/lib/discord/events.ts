@@ -1,6 +1,6 @@
 import type { DiscordChannel } from "@/lib/discord/channels";
 import { sendDiscordMessage, type DiscordEmbed, type DiscordLinkButton } from "@/lib/discord/service";
-import { tapgoOrigin } from "@/lib/config";
+import { appOrigin } from "@/lib/config";
 
 /**
  * Event Dispatcher de Discord.
@@ -12,11 +12,11 @@ import { tapgoOrigin } from "@/lib/config";
  * después de que la operación principal ya tuvo éxito — mismo momento en que
  * hoy se llama `recordAudit()`.
  *
- * `app.tapgocr.com` es el origen real de los enlaces de los botones: nunca
- * `tapgoOrigin` (ese es el dominio raíz, tapgocr.com, que es la landing
- * comercial, no el panel).
+ * `appOrigin` (`app.tapgocr.com`) es el origen real de los enlaces de los
+ * botones: nunca `tapgoOrigin` (ese es el dominio raíz, tapgocr.com, que es
+ * la landing comercial, no el panel).
  */
-const ADMIN_ORIGIN = tapgoOrigin.replace(/^https?:\/\//, "https://app.");
+const ADMIN_ORIGIN = appOrigin;
 
 export type EventType =
   | "USER_CREATED"

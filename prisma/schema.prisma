@@ -277,10 +277,12 @@ model Business {
   tags     Tag[]
   pointGroups PointGroup[]
   events   ScanEvent[]
+  feedbacks Feedback[]
   domains  Domain[]
   services BusinessService[]
   requests ServiceRequest[]
   menuCategories MenuCategory[]
+  socialPosts SocialPost[]
 
   @@index([active])
   @@index([ownerId])
@@ -372,6 +374,34 @@ model MenuItem {
 }
 
 // ---------------------------------------------------------------------------
+// Galería social ("Seguinos")
+// ---------------------------------------------------------------------------
+
+// Feedback real de una clienta: mostrar contenido visual (fotos de Instagram/
+// TikTok) en vez de que el primer botón mande al usuario fuera de TapGo sin
+// volver. No hay integración oficial con esas plataformas (harían falta
+// credenciales de API por negocio, y una integración frágil vía scraping es
+// peor que no tenerla) — el negocio sube la foto a mano, como cualquier otra
+// imagen del sistema, y opcionalmente la enlaza a la publicación real.
+model SocialPost {
+  id         String    @id @default(cuid())
+  businessId String
+  imageUrl   String
+  // A qué enlaza el thumbnail. Opcional: una foto sin link solo decora la
+  // sección, no todas las publicaciones tienen (o necesitan) destino.
+  linkUrl    String?
+  // Solo decide qué ícono mostrar sobre la foto (Instagram, TikTok...); nunca
+  // se usa para autenticar ni sincronizar contra la plataforma real.
+  platform   LinkType?
+  position   Int       @default(0)
+  createdAt  DateTime  @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, position])
+}
+
+// ---------------------------------------------------------------------------
 // Bitácora de operaciones sensibles
 // ---------------------------------------------------------------------------
 
@@ -420,6 +450,7 @@ model Tag {
   business   Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
   pointGroup PointGroup? @relation(fields: [pointGroupId], references: [id], onDelete: SetNull)
   events     ScanEvent[]
+  feedbacks  Feedback[]
   chip       Chip?
 
   @@index([businessId])
@@ -500,6 +531,34 @@ model ScanEvent {
   @@index([businessId, eventType, timestamp])
   @@index([tagId, timestamp])
   @@index([tagId, eventType, timestamp])
+}
+
+// ---------------------------------------------------------------------------
+// Feedback interno (rating + comentario) con puente a Google Reviews
+// ---------------------------------------------------------------------------
+
+// TapGoCR nunca publica esto en Google: es la opinión que el cliente deja
+// adentro del producto. El enlace real de reseñas de Google sigue viviendo en
+// `BusinessLink` (type = GOOGLE_REVIEWS) — no se duplica acá ni se inventa un
+// campo nuevo en `Business` para eso.
+model Feedback {
+  id         String      @id @default(cuid())
+  businessId String
+  tagId      String?
+  rating     Int
+  // 300 caracteres reales: el VARCHAR(191) por defecto de Prisma en MySQL
+  // truncaría un comentario a mitad de frase.
+  comment    String?     @db.VarChar(300)
+  source     EventSource @default(TAP)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  tag      Tag?     @relation(fields: [tagId], references: [id], onDelete: SetNull)
+
+  @@index([businessId, createdAt])
+  @@index([businessId, rating])
+  @@index([tagId])
 }
 
 // ---------------------------------------------------------------------------

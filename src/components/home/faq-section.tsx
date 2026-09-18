@@ -1,98 +1,71 @@
 import { SectionHeading } from "@/components/marketing";
 
 /**
- * Objeciones reales antes de escribir o llamar: instalación, compatibilidad,
- * cambios de contenido, dominios propios, cancelación y datos. Las preguntas
- * específicas de cada rubro viven aparte, en `industry.faq` (`/[industry]`).
+ * Objeciones reales antes de escribir o llamar: qué incluye la placa,
+ * compatibilidad, cambios de contenido, cantidad de placas y datos. Las
+ * preguntas específicas de cada rubro viven aparte, en `industry.faq`
+ * (`/[industry]`).
  */
 const FAQ: Array<{ q: string; a: string }> = [
   {
-    q: "¿Por qué no compro un sticker NFC por mi cuenta?",
-    a: "Podés hacerlo. Un sticker NFC por sí solo puede abrir un enlace. TapGoCR agrega la página de tu negocio, QR, administración, contenido actualizable, analytics y soporte para convertir esa interacción en una herramienta útil para tu negocio.",
-  },
-  {
-    q: "¿Necesito instalar una app?",
-    a: "No. El cliente acerca el teléfono a la placa NFC o escanea el QR con la cámara, y el navegador abre la página del negocio directamente.",
-  },
-  {
-    q: "¿Tengo que configurarlo yo?",
-    a: "No. Nos pasás tu información —logo, enlaces, menú, WhatsApp, redes— y nosotros diseñamos y configuramos todo: la placa, el NFC, el QR y tu página. Vos elegís qué querés, nosotros hacemos el resto.",
-  },
-  {
-    q: "¿Puedo poner mi logo?",
-    a: "Sí, tu página lleva tu logo, tus colores y tu nombre. Es la experiencia digital de tu negocio, no una genérica de TapGoCR.",
+    q: "¿Qué recibo?",
+    a: "Tu placa personalizada con chip NFC y código QR, más el acceso a tu página digital: logo, enlaces, menú, WhatsApp, redes, ubicación y reseñas. Nosotros la diseñamos, la configuramos y te la entregamos lista para instalar.",
   },
   {
     q: "¿La placa es mía?",
-    a: "Sí. La compra de la placa es un pago único y es tuya. La plataforma que la hace funcionar (analytics, panel, actualizaciones) sí tiene una mensualidad según tu plan; también existe una opción de pago único sin mensualidad, con funciones más básicas.",
+    a: "Sí. La compra de la placa es un pago único y es tuya. La plataforma que la hace funcionar (analytics, panel, actualizaciones) tiene una mensualidad según tu plan.",
   },
   {
-    q: "¿Puedo cambiar el destino de mi placa?",
-    a: "Sí, cuando quieras y las veces que quieras, desde tu panel. La placa nunca cambia; lo que abre del otro lado sí, y lo controlás vos.",
+    q: "¿Cómo funciona el NFC?",
+    a: "Tu cliente acerca su teléfono a la placa y el navegador abre tu página directamente, sin instalar nada. La mayoría de teléfonos de los últimos años lo soportan de fábrica.",
   },
   {
-    q: "¿Tiene mensualidad?",
-    a: "Depende del plan. Los planes con plataforma (analytics, panel, actualizaciones y soporte) tienen una mensualidad. También podés empezar con la opción de pago único, sin mensualidad, con funciones más básicas.",
+    q: "¿También tiene QR?",
+    a: "Sí. Cada placa lleva también un código QR impreso: si el teléfono no tiene NFC o lo tiene desactivado, la cámara escanea el QR y llega exactamente al mismo lugar.",
   },
   {
-    q: "¿Qué incluye la compra?",
-    a: "Tu placa personalizada, el chip NFC, el código QR, el diseño y la configuración inicial. Todo listo para usar desde el primer día.",
+    q: "¿Necesito una aplicación?",
+    a: "No, en iPhone ni en Android. El cliente acerca el teléfono a la placa o escanea el QR con la cámara, y el navegador abre tu página directamente.",
   },
   {
-    q: "¿Puedo usar NFC y QR al mismo tiempo?",
-    a: "Sí, siempre van juntos en la misma placa: si el teléfono no tiene NFC o lo tiene desactivado, el QR impreso lleva exactamente al mismo lugar.",
+    q: "¿Puedo cambiar la información de mi negocio?",
+    a: "Sí, cuando quieras y las veces que quieras, desde tu panel. La placa física nunca cambia; lo que abre del otro lado sí, y lo controlás vos.",
   },
   {
-    q: "¿Funciona en iPhone?",
-    a: "Sí, con la cámara nativa para el QR y por NFC desde iOS 14 en adelante, sin instalar nada.",
+    q: "¿Qué incluye la mensualidad?",
+    a: "La plataforma que hace funcionar tu placa: página digital, panel de administración, actualizaciones y analytics. El detalle exacto varía según tu plan.",
   },
   {
-    q: "¿Funciona en Android?",
-    a: "Sí, igual que en iPhone: cámara para el QR, y NFC activado por defecto en la gran mayoría de equipos.",
+    q: "¿Cómo recibo mi placa?",
+    a: "Nos compartís la información de tu negocio, nosotros configuramos tu página y preparamos tu placa con tu diseño. Te la entregamos lista para instalar.",
   },
   {
-    q: "¿Qué pasa si cambio mi menú?",
-    a: "Lo actualizás desde tu panel y se ve al instante en todas tus placas. La placa nunca guarda el contenido, solo apunta a tu página.",
+    q: "¿Dónde puedo colocarla?",
+    a: "Donde tus clientes la vean con facilidad: la mesa, el mostrador, la entrada o la caja. Es una placa física, así que va donde tenga sentido para tu negocio.",
   },
   {
-    q: "¿Tengo que cambiar el QR cada vez que actualizo algo?",
-    a: "No. El código impreso o programado no cambia nunca; lo que muestra del otro lado sí, y lo controlás vos.",
+    q: "¿Puedo tener varias placas?",
+    a: "Sí. La cantidad incluida depende de tu plan, y podés pedir placas adicionales cuando las necesités — cada una con su propio código y sus propias estadísticas.",
   },
   {
-    q: "¿Funciona si el cliente no tiene NFC?",
-    a: "Sí. El QR siempre está impreso en la misma placa como alternativa: si el teléfono no tiene NFC o lo tiene desactivado, la cámara escanea el QR y llega al mismo lugar.",
+    q: "¿Hacen entregas en Costa Rica?",
+    a: "Sí, a todo el país.",
   },
   {
-    q: "¿Puedo usarlo para varias cosas a la vez?",
-    a: "Sí. Una misma placa puede llevar a tu menú, WhatsApp, reseñas, redes y más, todo en una sola página que tu cliente recorre con el dedo.",
+    q: "¿Cuánto tarda en estar lista?",
+    a: "Depende de tu diseño y de qué tan rápido nos compartís la información de tu negocio. Te confirmamos el tiempo exacto cuando armamos tu pedido.",
   },
   {
-    q: "¿Puedo tener múltiples placas?",
-    a: "Sí. Cada plan incluye una cantidad de placas activas (mesa, entrada, mostrador, etc.) y podés agregar más cuando las necesités.",
+    q: "¿Qué pasa si dejo de pagar la mensualidad?",
+    a: "La placa física sigue siendo tuya. Tu página digital y el panel de administración quedan pausados hasta que reactivés la suscripción.",
   },
   {
-    q: "¿Puedo agregar otra sucursal?",
-    a: "Sí, con el plan Pro o con una propuesta a medida: cada sucursal tiene su propia página y sus propias placas.",
+    q: "¿Puedo usar mi propia marca?",
+    a: "Sí. Tu placa se diseña con tu logo, tus colores y tu nombre — no es una placa genérica de TapGoCR.",
   },
   {
-    q: "¿Puedo saber qué placa recibe más interacciones?",
-    a: "Sí, cada placa tiene su propio historial de escaneos y clics en tu panel de analytics, para saber cuál está funcionando mejor.",
-  },
-  {
-    q: "¿Puedo usar mi propio dominio?",
-    a: "Sí, es un servicio que gestionamos con vos: pedís el dominio desde tu panel y coordinamos el registro y la configuración.",
-  },
-  {
-    q: "¿Hay límite de escaneos?",
-    a: "No. Los escaneos y clics son siempre ilimitados; lo que varía entre planes es la cantidad de placas activas.",
-  },
-  {
-    q: "¿Qué ocurre si cancelo?",
-    a: "Tus placas dejan de mostrar tu página, pero podés reactivar cuando quieras. No perdés el historial mientras la cuenta siga existiendo.",
-  },
-  {
-    q: "¿Qué ocurre con mis datos?",
-    a: "Son tuyos. No los compartimos con terceros ni los usamos para otra cosa que mostrar tu página y tus estadísticas.",
+    q: "¿Puedo agregar mi sitio web?",
+    a: "Sí, un enlace a tu sitio web es una de las opciones disponibles, junto con menú, WhatsApp, redes, ubicación y reseñas.",
   },
 ];
 
@@ -111,7 +84,7 @@ function faqJsonLd() {
 
 export function FaqSection() {
   return (
-    <section id="faq" className="mx-auto max-w-3xl px-5 py-20 sm:py-24 lg:py-28">
+    <section id="faq" className="mx-auto max-w-3xl px-5 py-16 sm:py-20 lg:py-24">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd()) }}

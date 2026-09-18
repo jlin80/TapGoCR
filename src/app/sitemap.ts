@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-import { tapgoOrigin } from "@/lib/config";
+import { appOrigin, tapgoOrigin } from "@/lib/config";
 import { INDUSTRIES } from "@/lib/industries";
 import { PACKAGES } from "@/lib/packages";
 
@@ -15,7 +15,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: tapgoOrigin, lastModified: now, changeFrequency: "weekly", priority: 1 },
     { url: `${tapgoOrigin}/precios`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
-    { url: `${tapgoOrigin}/registro`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
+    // `/registro` es exclusivo de `appOrigin` (ver `proxy.ts`): listarlo bajo
+    // `tapgoOrigin` haría que Google indexara una URL que solo redirige.
+    { url: `${appOrigin}/registro`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
     { url: `${tapgoOrigin}/nosotros`, lastModified: now, changeFrequency: "yearly", priority: 0.5 },
     { url: `${tapgoOrigin}/privacidad`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
     { url: `${tapgoOrigin}/terminos`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },

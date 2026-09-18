@@ -26,7 +26,11 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 import { tapgoOrigin } from "../src/lib/config.ts";
+import { acquireCronLock, releaseCronLock } from "./cron-lock.ts";
 import { notifyServiceDown, notifyServiceRecovered } from "../src/lib/discord/events.ts";
+
+/** Corre cada 2 minutos; una corrida se considera colgada a partir de este umbral. */
+const LOCK_MAX_AGE_MS = 90_000;
 
 type HealthState = {
   status: "up" | "down";
@@ -87,41 +91,50 @@ async function checkOnce(): Promise<{ up: boolean; detail: string }> {
 }
 
 async function main() {
-  const now = new Date();
-  const result = await checkOnce();
-  const previous = readState();
-
-  console.log(
-    `[${now.toISOString()}] ${CHECK_URL} → ${result.up ? "UP" : "DOWN"} (${result.detail})`,
-  );
-
-  if (!result.up) {
-    if (previous?.status !== "down") {
-      // Transición arriba → caído: primera vez que se detecta, se avisa.
-      writeState({ status: "down", since: now.toISOString() });
-      await notifyServiceDown({
-        eventId: `healthcheck-down:${now.toISOString()}`,
-        service: `${CHECK_URL} (${result.detail})`,
-        at: now,
-      });
-      console.log("  → aviso SERVICE DOWN enviado");
-    }
-    // Ya estaba caído: no se repite el aviso en cada corrida.
+  if (!acquireCronLock("healthcheck", LOCK_MAX_AGE_MS)) {
+    console.log("Ya hay una corrida de healthcheck en curso, se omite esta.");
     return;
   }
 
-  if (previous?.status === "down") {
-    // Transición caído → arriba: se recuperó, se avisa con el downtime real.
-    const since = new Date(previous.since);
-    await notifyServiceRecovered({
-      eventId: `healthcheck-down:${previous.since}`,
-      service: CHECK_URL,
-      downtimeLabel: downtimeLabel(since, now),
-    });
-    console.log("  → aviso SERVICE RECOVERED enviado");
-  }
+  try {
+    const now = new Date();
+    const result = await checkOnce();
+    const previous = readState();
 
-  writeState({ status: "up", since: previous?.status === "up" ? previous.since : now.toISOString() });
+    console.log(
+      `[${now.toISOString()}] ${CHECK_URL} → ${result.up ? "UP" : "DOWN"} (${result.detail})`,
+    );
+
+    if (!result.up) {
+      if (previous?.status !== "down") {
+        // Transición arriba → caído: primera vez que se detecta, se avisa.
+        writeState({ status: "down", since: now.toISOString() });
+        await notifyServiceDown({
+          eventId: `healthcheck-down:${now.toISOString()}`,
+          service: `${CHECK_URL} (${result.detail})`,
+          at: now,
+        });
+        console.log("  → aviso SERVICE DOWN enviado");
+      }
+      // Ya estaba caído: no se repite el aviso en cada corrida.
+      return;
+    }
+
+    if (previous?.status === "down") {
+      // Transición caído → arriba: se recuperó, se avisa con el downtime real.
+      const since = new Date(previous.since);
+      await notifyServiceRecovered({
+        eventId: `healthcheck-down:${previous.since}`,
+        service: CHECK_URL,
+        downtimeLabel: downtimeLabel(since, now),
+      });
+      console.log("  → aviso SERVICE RECOVERED enviado");
+    }
+
+    writeState({ status: "up", since: previous?.status === "up" ? previous.since : now.toISOString() });
+  } finally {
+    releaseCronLock("healthcheck");
+  }
 }
 
 main().catch((error) => {

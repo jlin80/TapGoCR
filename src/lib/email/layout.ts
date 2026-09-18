@@ -1,4 +1,4 @@
-import { appName, tapgoOrigin } from "@/lib/config";
+import { appName, appOrigin } from "@/lib/config";
 
 /**
  * Envoltorio HTML compartido por todos los templates.
@@ -9,7 +9,7 @@ import { appName, tapgoOrigin } from "@/lib/config";
  * imágenes pesadas: solo el nombre de marca en texto, para que el correo siga
  * siendo liviano y legible incluso con imágenes bloqueadas por defecto.
  */
-const ADMIN_ORIGIN = tapgoOrigin.replace(/^https?:\/\//, "https://app.");
+const ADMIN_ORIGIN = appOrigin;
 
 export type EmailLayoutInput = {
   preheader?: string;

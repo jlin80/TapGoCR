@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { ActionForm } from "@/components/action-form";
+import { ColorField } from "@/components/color-field";
 import { LinksManager } from "@/components/links-manager";
 import { NoBusinessAssigned } from "@/components/no-business";
 import { Card, Field, Input, PageHeader, Select, Textarea } from "@/components/ui";
@@ -10,7 +11,7 @@ import { primaryBusinessId } from "@/lib/authz";
 import { tagUrl } from "@/lib/config";
 import { prisma } from "@/lib/prisma";
 import { THEME_LABELS } from "@/lib/theme";
-import { updatePublicProfile, uploadProfileImage } from "@/server/profile-actions";
+import { updatePublicProfile } from "@/server/profile-actions";
 
 export const metadata: Metadata = { title: "Mi página pública" };
 
@@ -174,45 +175,39 @@ export default async function ClientProfilePage() {
                   Configuración avanzada
                 </summary>
                 <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2">
-                  <Field label="Logo (URL)" hint="Cuadrado, mínimo 200×200 px">
-                    <Input
-                      name="logoUrl"
-                      type="url"
-                      maxLength={2048}
-                      defaultValue={business.logoUrl ?? ""}
-                      placeholder="https://…/logo.png"
-                    />
+                  <Field label="Logo" hint="Cuadrado, mínimo 200×200 px. JPG, PNG o WEBP.">
+                    <Input type="file" name="logoFile" accept={IMAGE_UPLOAD_ACCEPT} />
+                    {business.logoUrl ? (
+                      <span className="mt-1 block truncate text-xs text-muted">
+                        Ya tenés uno cargado — subí otro archivo para reemplazarlo.
+                      </span>
+                    ) : null}
                   </Field>
 
-                  <Field label="Portada (URL)" hint="Horizontal, proporción 16:9">
-                    <Input
-                      name="coverUrl"
-                      type="url"
-                      maxLength={2048}
-                      defaultValue={business.coverUrl ?? ""}
-                      placeholder="https://…/portada.jpg"
-                    />
+                  <Field label="Portada" hint="Horizontal, proporción 16:9. JPG, PNG o WEBP.">
+                    <Input type="file" name="coverFile" accept={IMAGE_UPLOAD_ACCEPT} />
+                    {business.coverUrl ? (
+                      <span className="mt-1 block truncate text-xs text-muted">
+                        Ya tenés una cargada — subí otro archivo para reemplazarla.
+                      </span>
+                    ) : null}
                   </Field>
 
                   <Field
                     label="¿Usar los colores de tu marca?"
                     hint="Opcional. Dejalo vacío para usar los colores de TapGo."
                   >
-                    <Input
+                    <ColorField
                       name="brandColor"
-                      maxLength={7}
-                      pattern="#[0-9a-fA-F]{6}"
-                      defaultValue={business.brandColor ?? ""}
+                      defaultValue={business.brandColor}
                       placeholder="#0d9488"
                     />
                   </Field>
 
                   <Field label="Color secundario" hint="Opcional. Se usa al pulsar un botón.">
-                    <Input
+                    <ColorField
                       name="accentColor"
-                      maxLength={7}
-                      pattern="#[0-9a-fA-F]{6}"
-                      defaultValue={business.accentColor ?? ""}
+                      defaultValue={business.accentColor}
                       placeholder="#0f766e"
                     />
                   </Field>
@@ -233,43 +228,6 @@ export default async function ClientProfilePage() {
             </Card>
           </section>
         </ActionForm>
-
-        <section id="fotos" className="scroll-mt-20">
-          <h2 className="mb-1 text-lg font-semibold">Fotos</h2>
-          <p className="mb-3 text-sm text-muted">
-            Subí el archivo directo en vez de pegar una URL. Reemplaza a la que
-            hubiera cargada arriba.
-          </p>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Card>
-              <ActionForm
-                action={uploadProfileImage}
-                submitLabel="Subir logo"
-                pendingLabel="Subiendo…"
-              >
-                <input type="hidden" name="businessId" value={business.id} />
-                <input type="hidden" name="field" value="logo" />
-                <Field label="Logo" hint="Cuadrado, mínimo 200×200 px. JPG, PNG o WEBP.">
-                  <Input type="file" name="file" required accept={IMAGE_UPLOAD_ACCEPT} />
-                </Field>
-              </ActionForm>
-            </Card>
-
-            <Card>
-              <ActionForm
-                action={uploadProfileImage}
-                submitLabel="Subir portada"
-                pendingLabel="Subiendo…"
-              >
-                <input type="hidden" name="businessId" value={business.id} />
-                <input type="hidden" name="field" value="cover" />
-                <Field label="Portada" hint="Horizontal, proporción 16:9. JPG, PNG o WEBP.">
-                  <Input type="file" name="file" required accept={IMAGE_UPLOAD_ACCEPT} />
-                </Field>
-              </ActionForm>
-            </Card>
-          </div>
-        </section>
 
         <section id="enlaces" className="scroll-mt-20">
           <h2 className="mb-1 text-lg font-semibold">Acciones</h2>

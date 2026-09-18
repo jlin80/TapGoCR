@@ -19,6 +19,14 @@ import { appName, showBranding } from "@/lib/config";
  * degradado hacia el fondo del tema para que el nombre del negocio se lea
  * bien encima sin importar la foto.
  *
+ * Siempre 16:9 — antes el mobile forzaba un recorte a 4:3 con `object-cover`,
+ * y una portada pensada y subida en 16:9 (ver el hint del campo de carga)
+ * perdía sus bordes izquierdo y derecho en un teléfono: exactamente donde
+ * suele vivir texto o un elemento visual. `object-contain` muestra la imagen
+ * completa siempre, sin importar el ancho de pantalla; si algún negocio subió
+ * una portada que no es exactamente 16:9, el sobrante se rellena con
+ * `bg-surface-muted` en vez de recortarse.
+ *
  * Se usa `<img>` y no `next/image` por el mismo motivo que el logo: la URL la
  * pone el negocio y puede apuntar a cualquier host, lo que exigiría mantener
  * una lista de dominios permitidos en la configuración de Next.
@@ -36,12 +44,12 @@ export function BusinessCover({
   if (!url) return null;
 
   return (
-    <div className="relative -mx-5 mb-0 aspect-[4/3] w-[calc(100%+2.5rem)] overflow-hidden bg-surface-muted sm:aspect-[16/9]">
+    <div className="relative -mx-5 mb-0 aspect-video w-[calc(100%+2.5rem)] overflow-hidden bg-surface-muted">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={url}
         alt={`Portada de ${name}`}
-        className="size-full object-cover"
+        className="size-full object-contain"
         fetchPriority="high"
         decoding="async"
       />

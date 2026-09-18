@@ -698,6 +698,30 @@ h3 {
   }
 }
 
+/*
+ * Acercamiento sutil de la foto del hero mientras se recorre esa sección
+ * (nunca de scroll-jacking: es puro CSS, atado a `animation-timeline: view()`,
+ * así que sin soporte del navegador la imagen simplemente queda estática).
+ */
+@keyframes tapgo-hero-approach {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.06);
+  }
+}
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .hero-approach {
+      animation: tapgo-hero-approach linear both;
+      animation-timeline: view();
+      animation-range: cover 0% cover 100%;
+    }
+  }
+}
+
 @keyframes tapgo-marquee {
   from {
     transform: translateX(0);
@@ -1044,7 +1068,7 @@ html.scroll-js .scroll-progress {
     justify-content: center;
   }
 
-  html:not(.force-motion) .marquee-track > [aria-hidden="true"] {
+  html:not(.force-motion) .marquee-track > [data-copy="1"] {
     display: none;
   }
 
@@ -1067,6 +1091,16 @@ html.scroll-js .scroll-progress {
     justify-content: center;
     row-gap: 0.75rem;
     padding-right: 0;
+  }
+
+  /*
+   * Quieta, cada copia del track repite su secuencia varias veces (ver
+   * `MARQUEE_REPEAT` en marketing.tsx) para que el bucle en movimiento nunca
+   * se quede sin contenido. Sin esto, la lista estática mostraría cada ítem
+   * dos o tres veces seguidas en vez de una sola.
+   */
+  html:not(.force-motion) .marquee-track [data-rep]:not([data-rep="0"]) {
+    display: none;
   }
 }
 

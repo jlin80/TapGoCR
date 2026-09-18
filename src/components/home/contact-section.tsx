@@ -15,7 +15,7 @@ export function ContactSection() {
     <section id="contacto" className="relative overflow-hidden bg-surface-muted">
       <Blobs />
 
-      <div className="relative mx-auto max-w-3xl px-5 py-20 sm:py-24 lg:py-28">
+      <div className="relative mx-auto max-w-3xl px-5 py-16 sm:py-20 lg:py-24">
         <SectionHeading
           eyebrow="Quiero mi TapGo"
           title="Contanos sobre tu negocio"

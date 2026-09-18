@@ -54,7 +54,7 @@ export default function TerminosPage() {
                 contratado:
               </p>
               <ul className="mt-3 flex list-disc flex-col gap-1.5 pl-5">
-                <li>Placas o stickers NFC y QR.</li>
+                <li>Placas NFC y QR.</li>
                 <li>Páginas digitales para negocios.</li>
                 <li>Gestión de enlaces.</li>
                 <li>Menús digitales.</li>
@@ -171,7 +171,7 @@ export default function TerminosPage() {
                 5. Códigos QR y NFC
               </h2>
               <p className="mt-4">
-                Las placas, stickers y chips NFC proporcionados por{" "}
+                Las placas y chips NFC proporcionados por{" "}
                 {appName} funcionan como mecanismos para dirigir a los
                 usuarios hacia una URL o página determinada.
               </p>

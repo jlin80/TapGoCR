@@ -9,7 +9,7 @@ import { PLANS } from "@/lib/offers";
 export function PricingTeaserSection() {
   return (
     <section id="precios-preview" className="border-b border-border bg-surface-muted">
-      <div className="mx-auto max-w-6xl px-5 py-20 sm:py-24 lg:py-28">
+      <div className="mx-auto max-w-6xl px-5 py-16 sm:py-20 lg:py-24">
         <SectionHeading
           eyebrow="Precios"
           title="Empezá pequeño. Crecé cuando lo necesités."

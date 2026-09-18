@@ -6,6 +6,7 @@ import { BusinessAvatar, BusinessCover, InactiveTag } from "@/components/landing
 import { LinkIcon } from "@/components/link-icon";
 import { EventSource, LinkType, MenuMode, ScanEventType } from "@/generated/prisma/enums";
 import { appName, showBranding, tagUrl } from "@/lib/config";
+import { galleryFor } from "@/lib/gallery";
 import { isPlausibleCode, landingButtons, splitButtons } from "@/lib/landing";
 import { hasPublishedMenu, publicFeaturedItems } from "@/lib/menu";
 import { formatPrice } from "@/lib/price";
@@ -152,6 +153,7 @@ export default async function TagLandingPage({
     business.menuMode === MenuMode.NATIVE && (await hasPublishedMenu(business.id));
 
   const featured = nativeMenu ? await publicFeaturedItems(business.id) : [];
+  const gallery = await galleryFor(business.id);
 
   const allButtons = landingButtons(business, { nativeMenuActive: nativeMenu });
   const { quickActions, secondary } = splitButtons(allButtons);
@@ -292,6 +294,54 @@ export default async function TagLandingPage({
         </section>
       ) : null}
 
+      {gallery.length > 0 ? (
+        <section className="animate-landing-in animate-landing-in-delay-2 mt-8">
+          <h2 className={`text-sm text-muted ${theme.eyebrow}`}>Seguinos</h2>
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {gallery.map((post) => {
+              const image = (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={post.imageUrl}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  className="size-full object-cover"
+                />
+              );
+
+              return (
+                <div
+                  key={post.id}
+                  className="relative aspect-square overflow-hidden rounded-[var(--radius)] bg-surface-muted"
+                >
+                  {post.linkUrl ? (
+                    <a
+                      href={post.linkUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block size-full transition-transform active:scale-95"
+                    >
+                      {image}
+                    </a>
+                  ) : (
+                    image
+                  )}
+                  {post.platform ? (
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute top-1.5 right-1.5 flex size-5 items-center justify-center rounded-full bg-black/40 text-white"
+                    >
+                      <LinkIcon type={post.platform} className="size-3" />
+                    </span>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+
       {secondary.length > 0 ? (
         <nav
           className="animate-landing-in animate-landing-in-delay-2 mt-8 flex flex-col gap-2.5"
@@ -300,7 +350,14 @@ export default async function TagLandingPage({
           {secondary.map((button) => (
             <LandingLink
               key={button.id}
-              href={`/t/${encodeURIComponent(code)}/go/${encodeURIComponent(button.id)}${qs}`}
+              // Reseñas es la única categoría que no va directo al destino: pasa
+              // primero por el feedback interno (ver `/t/[code]/feedback`), que
+              // arma su propio enlace hacia Google a partir de este mismo botón.
+              href={
+                button.type === LinkType.GOOGLE_REVIEWS
+                  ? `/t/${encodeURIComponent(code)}/feedback${qs}`
+                  : `/t/${encodeURIComponent(code)}/go/${encodeURIComponent(button.id)}${qs}`
+              }
               type={button.type}
               label={button.label}
             />

@@ -27,7 +27,7 @@ const MAX_TAG_VALUE = Math.max(...BY_TAG.map((tag) => tag.value));
 export function AnalyticsSection() {
   return (
     <section className="border-b border-border">
-      <div className="mx-auto max-w-5xl px-5 py-20 sm:py-24 lg:py-28">
+      <div className="mx-auto max-w-5xl px-5 py-16 sm:py-20 lg:py-24">
         <SectionHeading
           eyebrow="Analytics"
           title="¿Querés saber qué está funcionando?"

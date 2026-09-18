@@ -62,7 +62,7 @@ export default async function ClientTagsPage() {
         description={
           tags.length > 0
             ? `${activeCount} ${activeCount === 1 ? "punto activo" : "puntos activos"} · 1 página compartida`
-            : "Cada punto TapGo es una placa o sticker instalado en tu local."
+            : "Cada punto TapGo es una placa instalada en tu local."
         }
       />
 

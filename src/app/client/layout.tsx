@@ -14,6 +14,7 @@ const NAV: NavGroup[] = [
     items: [
       { href: "/client/dashboard", label: "Resumen" },
       { href: "/client/analytics", label: "Analytics" },
+      { href: "/client/feedback", label: "Feedback y reseñas" },
       { href: "/client/tags", label: "Mis puntos TapGo" },
     ],
   },
@@ -22,6 +23,7 @@ const NAV: NavGroup[] = [
     items: [
       { href: "/client/profile", label: "Mi página pública" },
       { href: "/client/menu", label: "Menú digital" },
+      { href: "/client/gallery", label: "Galería" },
     ],
   },
   {

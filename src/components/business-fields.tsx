@@ -1,3 +1,4 @@
+import { ColorField } from "@/components/color-field";
 import { Checkbox, Field, FieldWide, Fieldset, Input, Select, Textarea } from "@/components/ui";
 import { Industry, LandingTheme, Plan } from "@/generated/prisma/enums";
 import { INDUSTRY_LABELS } from "@/lib/industry-labels";
@@ -26,6 +27,9 @@ export type BusinessFormValues = {
   industry: Industry | null;
 };
 
+/** Sin PDF a propósito: un logo o una portada son siempre una imagen. */
+const IMAGE_UPLOAD_ACCEPT = "image/png,image/jpeg,image/webp";
+
 /**
  * Campos del formulario de negocio, compartidos por el alta y la edición.
  *
@@ -34,8 +38,21 @@ export type BusinessFormValues = {
  * exactamente el mismo peso visual, sin ninguna indicación de para qué servía
  * cada uno. Los grupos responden a la pregunta que se hace quien completa el
  * formulario: quién es, cómo lo contactan, cómo se ve y si está activo.
+ *
+ * `businessId` solo llega al editar un negocio ya creado: dar de alta uno
+ * nuevo todavía no tiene carpeta de subidas donde guardar el archivo (el
+ * upload necesita el id como parte de la ruta, ver `saveUpload`), así que el
+ * logo y la portada se agregan recién después de guardar por primera vez.
+ * El campo es siempre "subí un archivo" — nunca una URL para pegar: son
+ * siempre imágenes propias del negocio, no algo alojado en otro lado.
  */
-export function BusinessFields({ values }: { values?: BusinessFormValues }) {
+export function BusinessFields({
+  values,
+  businessId,
+}: {
+  values?: BusinessFormValues;
+  businessId?: string;
+}) {
   return (
     <div className="flex flex-col gap-8">
       <Fieldset
@@ -133,42 +150,47 @@ export function BusinessFields({ values }: { values?: BusinessFormValues }) {
         legend="Presentación"
         description="Lo que define el aspecto de su página pública. El cliente también puede editarlo desde su panel."
       >
-        <Field label="Logo (URL)" hint="Cuadrado, mínimo 200×200 px">
-          <Input
-            name="logoUrl"
-            type="url"
-            maxLength={2048}
-            defaultValue={values?.logoUrl ?? ""}
-            placeholder="https://…/logo.png"
-          />
-        </Field>
+        {businessId ? (
+          <>
+            <Field label="Logo" hint="Cuadrado, mínimo 200×200 px. JPG, PNG o WEBP.">
+              <Input type="file" name="logoFile" accept={IMAGE_UPLOAD_ACCEPT} />
+              {values?.logoUrl ? (
+                <span className="mt-1 block truncate text-xs text-muted">
+                  Ya tiene uno cargado — subí otro archivo para reemplazarlo.
+                </span>
+              ) : null}
+            </Field>
 
-        <Field label="Portada (URL)" hint="Horizontal, proporción 16:9">
-          <Input
-            name="coverUrl"
-            type="url"
-            maxLength={2048}
-            defaultValue={values?.coverUrl ?? ""}
-            placeholder="https://…/portada.jpg"
-          />
-        </Field>
+            <Field label="Portada" hint="Horizontal, proporción 16:9. JPG, PNG o WEBP.">
+              <Input type="file" name="coverFile" accept={IMAGE_UPLOAD_ACCEPT} />
+              {values?.coverUrl ? (
+                <span className="mt-1 block truncate text-xs text-muted">
+                  Ya tiene una cargada — subí otro archivo para reemplazarla.
+                </span>
+              ) : null}
+            </Field>
+          </>
+        ) : (
+          <FieldWide>
+            <p className="text-sm text-muted">
+              El logo y la portada se suben como archivo una vez creado el negocio —
+              volvé a esta pantalla después de guardar.
+            </p>
+          </FieldWide>
+        )}
 
-        <Field label="Color principal" hint="Hexadecimal de 6 dígitos">
-          <Input
+        <Field label="Color principal" hint="Elegí de la paleta o escribí el hexadecimal.">
+          <ColorField
             name="brandColor"
-            maxLength={7}
-            pattern="#[0-9a-fA-F]{6}"
-            defaultValue={values?.brandColor ?? ""}
+            defaultValue={values?.brandColor}
             placeholder="#0d9488"
           />
         </Field>
 
         <Field label="Color secundario" hint="Opcional. Se usa al pulsar un botón.">
-          <Input
+          <ColorField
             name="accentColor"
-            maxLength={7}
-            pattern="#[0-9a-fA-F]{6}"
-            defaultValue={values?.accentColor ?? ""}
+            defaultValue={values?.accentColor}
             placeholder="#0f766e"
           />
         </Field>

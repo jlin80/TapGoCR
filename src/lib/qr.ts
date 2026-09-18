@@ -21,7 +21,7 @@ export function qrSvgForCode(code: string): Promise<string> {
   return QRCode.toString(tagQrUrl(code), { ...OPTIONS, type: "svg", width: 240 });
 }
 
-/** PNG para descargar e imprimir. 1024 px basta para una placa o un sticker. */
+/** PNG para descargar e imprimir. 1024 px basta para una placa. */
 export function qrPngForCode(code: string, width = 1024): Promise<Buffer> {
   return QRCode.toBuffer(tagQrUrl(code), { ...OPTIONS, type: "png", width });
 }
