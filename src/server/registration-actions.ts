@@ -1,10 +1,13 @@
 "use server";
 
+import { appendFileSync } from "node:fs";
+import { join } from "node:path";
+
 import bcrypt from "bcryptjs";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 
-import type { Registration } from "@/generated/prisma/client";
+import type { Prisma, Registration } from "@/generated/prisma/client";
 import {
   BusinessRole,
   LinkType,
@@ -18,7 +21,7 @@ import { emitNewClient } from "@/lib/notifications/dispatch";
 import { prisma } from "@/lib/prisma";
 import { limitPublicSubmission } from "@/lib/public-rate-limit";
 import { extractClientIp, hashIp } from "@/lib/request-info";
-import { businessNameTaken, clientNameTaken, NameConflictError, withNameLock } from "@/lib/uniqueness";
+import { businessNameTaken, clientNameTaken, isUniqueConstraintOn } from "@/lib/uniqueness";
 import {
   firstIssue,
   formValues,
@@ -139,14 +142,87 @@ export async function submitRegistration(
 }
 
 /**
- * Núcleo compartido de la creación de cuenta: User + Business + enlaces
- * iniciales, en una sola transacción. Lo usan tanto el alta automática de
- * `submitRegistration` como la aprobación manual de `approveRegistration`
- * (que sigue existiendo para resolver a mano los casos que el alta
- * automática no pudo completar — nombre duplicado, colisión de código).
+ * Cuántas veces se reintenta la transacción completa cuando `clientCode` o
+ * `slug` chocan con uno que otra alta concurrente insertó primero. Cada
+ * reintento vuelve a calcular ambos valores contra el estado más reciente de
+ * la base, así que un choque real (dos altas al mismo tiempo, no un nombre
+ * duplicado) se resuelve solo en el segundo o tercer intento. 5 es más que de
+ * sobra: con eso muchas altas tendrían que caer exactamente en el mismo
+ * instante para agotarlo.
+ */
+const MAX_CODE_COLLISION_RETRIES = 5;
+
+/**
+ * Registra un fallo inesperado con el detalle real (paso, código/mensaje de
+ * Prisma o MariaDB), nunca passwords ni hashes. El stdout de Passenger en
+ * este hosting no queda en ningún archivo legible, así que además de
+ * `console.error` se escribe una copia en un archivo plano dentro del
+ * proyecto: es lo único que permite diagnosticar sin adivinar.
+ */
+function logRegistrationFailure(context: {
+  registration: Registration;
+  reviewedBy: "AUTO" | "ROOT";
+  step: string;
+  attempt: number;
+  error: unknown;
+}): void {
+  const { registration, reviewedBy, step, attempt, error } = context;
+  const prismaCode =
+    error && typeof error === "object" && "code" in error
+      ? String((error as { code: unknown }).code)
+      : undefined;
+  const prismaMeta =
+    error && typeof error === "object" && "meta" in error
+      ? (error as { meta: unknown }).meta
+      : undefined;
+
+  const debugEntry = {
+    at: new Date().toISOString(),
+    registrationId: registration.id,
+    email: registration.email,
+    businessName: registration.businessName,
+    reviewedBy,
+    step,
+    attempt,
+    errorCode: prismaCode,
+    errorMeta: prismaMeta,
+    errorMessage: error instanceof Error ? error.message : String(error),
+    errorStack: error instanceof Error ? error.stack : undefined,
+  };
+
+  console.error("[registration-approve] fallo en finalizeRegistration", debugEntry);
+
+  try {
+    appendFileSync(
+      join(process.cwd(), "tmp", "registration-debug.log"),
+      JSON.stringify(debugEntry) + "\n",
+    );
+  } catch {
+    // Si ni siquiera se puede escribir el log de diagnóstico, no vale la
+    // pena que la aprobación falle por eso.
+  }
+}
+
+/**
+ * Núcleo compartido de la creación de cuenta: User + Business + BusinessUser
+ * OWNER + enlaces iniciales + Registration APPROVED, en una sola transacción
+ * atómica. Lo usan tanto el alta automática de `submitRegistration` como la
+ * aprobación manual de `approveRegistration` (que sigue existiendo solo como
+ * mecanismo de recuperación para los casos excepcionales que el alta
+ * automática no pudo resolver sola — el correo ya existe, o los reintentos de
+ * `clientCode`/`slug` se agotaron).
+ *
+ * No depende de ningún lock de aplicación (antes usaba `GET_LOCK` de MySQL):
+ * la garantía contra dos altas concurrentes con el mismo nombre la da el
+ * índice único de `User.name`/`Business.name` en la base (ver
+ * `uniqueness.ts`), no una sesión que puede quedar huérfana y bloquear el
+ * nombre para siempre. `clientCode` y `slug` se calculan DENTRO de la
+ * transacción y, si otra alta concurrente ya tomó el valor calculado
+ * (P2002), se reintenta la transacción completa con el siguiente candidato
+ * — ver `MAX_CODE_COLLISION_RETRIES`.
  *
  * Si algo falla a mitad no queda un usuario sin negocio ni un negocio sin
- * dueño.
+ * dueño: todo vive en el mismo `$transaction`.
  */
 async function finalizeRegistration(
   registration: Registration,
@@ -168,6 +244,11 @@ async function finalizeRegistration(
   }
 
   const fullName = `${registration.firstName} ${registration.lastName}`;
+
+  // Comprobación amigable ANTES de intentar: le ahorra a la mayoría de los
+  // casos reales (nombre duplicado de verdad) el viaje completo a la base.
+  // No es la garantía de concurrencia — esa la da el índice único — así que
+  // no hace falta repetirla dentro de la transacción.
   if (await businessNameTaken(registration.businessName, undefined, registration.id)) {
     return {
       error: "Ya existe un negocio con ese nombre. Revisá si es un duplicado antes de aprobar.",
@@ -179,184 +260,174 @@ async function finalizeRegistration(
     };
   }
 
-  const slug = await availableSlug(registration.businessName);
-  const clientCode = await nextClientCode();
-
-  // Se llenan dentro de la transacción; se leen después para notificar a
-  // Discord solo si todo se guardó bien.
-  let createdUserId = "";
-  let createdBusinessId = "";
-  // Diagnóstico temporal: para saber en qué paso concreto falló sin tener
-  // que adivinar. Nunca contiene contraseñas ni hashes.
   let step = "start";
 
-  try {
-    step = "acquire-lock";
-    await withNameLock(registration.businessName, async (tx) => {
-      step = "recheck-name-conflict";
-      // Re-verificado dentro del lock: dos altas concurrentes con el mismo
-      // nombre ya no pueden leer ambas "libre" antes de que cualquiera cree
-      // su fila.
-      if (await businessNameTaken(registration.businessName, undefined, registration.id, tx)) {
-        throw new NameConflictError(
-          "Ya existe un negocio con ese nombre. Revisá si es un duplicado antes de aprobar.",
-        );
-      }
-      if (await clientNameTaken(fullName, undefined, registration.id, tx)) {
-        throw new NameConflictError(
-          "Ya existe una cuenta con ese nombre. Revisá si es un duplicado antes de aprobar.",
-        );
-      }
+  for (let attempt = 1; attempt <= MAX_CODE_COLLISION_RETRIES; attempt++) {
+    try {
+      const result = await prisma.$transaction(
+        async (tx) => {
+          step = "compute-slug";
+          const slug = await availableSlug(registration.businessName, tx);
+          step = "compute-client-code";
+          const clientCode = await nextClientCode(tx);
 
-      step = "create-user";
-      const user = await tx.user.create({
-        data: {
-          email: registration.email,
-          clientCode,
-          name: `${registration.firstName} ${registration.lastName}`.trim(),
-          role: UserRole.CLIENT,
-          // Se reutiliza el hash que la persona eligió al registrarse.
-          passwordHash: registration.passwordHash,
+          step = "create-user";
+          const user = await tx.user.create({
+            data: {
+              email: registration.email,
+              clientCode,
+              name: fullName.trim(),
+              role: UserRole.CLIENT,
+              // Se reutiliza el hash que la persona eligió al registrarse.
+              passwordHash: registration.passwordHash,
+            },
+            select: { id: true },
+          });
+
+          step = "create-business";
+          const business = await tx.business.create({
+            data: {
+              name: registration.businessName,
+              slug,
+              industry: registration.industry,
+              legalId: registration.legalId,
+              phone: registration.phone,
+              whatsapp: registration.whatsapp,
+              address: [registration.address, registration.canton, registration.province]
+                .filter(Boolean)
+                .join(", "),
+              ownerId: user.id,
+              members: { create: { userId: user.id, role: BusinessRole.OWNER } },
+            },
+            select: { id: true },
+          });
+
+          // Cada enlace que la persona ya tenía a mano al registrarse se
+          // publica de una vez: así el negocio no estrena la placa con la
+          // landing vacía. Van en el mismo orden en que aparecen en el
+          // formulario, para que la landing quede como se la mostró la
+          // vista previa del registro.
+          type EnlaceInicial = { type: LinkType; label: string; url: string };
+
+          const enlacesIniciales: EnlaceInicial[] = [];
+          if (registration.menuUrl) {
+            enlacesIniciales.push({
+              type: LinkType.MENU,
+              label: "Ver menú",
+              url: registration.menuUrl,
+            });
+          }
+          if (registration.instagramUrl) {
+            enlacesIniciales.push({
+              type: LinkType.INSTAGRAM,
+              label: "Instagram",
+              url: registration.instagramUrl,
+            });
+          }
+          if (registration.facebookUrl) {
+            enlacesIniciales.push({
+              type: LinkType.FACEBOOK,
+              label: "Facebook",
+              url: registration.facebookUrl,
+            });
+          }
+          if (registration.googleReviewsUrl) {
+            enlacesIniciales.push({
+              type: LinkType.GOOGLE_REVIEWS,
+              label: "Dejanos tu reseña",
+              url: registration.googleReviewsUrl,
+            });
+          }
+
+          if (enlacesIniciales.length > 0) {
+            step = "create-initial-links";
+            await tx.businessLink.createMany({
+              data: enlacesIniciales.map((link, position) => ({
+                ...link,
+                businessId: business.id,
+                position,
+              })),
+            });
+          }
+
+          step = "update-registration";
+          await tx.registration.update({
+            where: { id: registration.id },
+            data: {
+              status: RegistrationStatus.APPROVED,
+              reviewedAt: new Date(),
+              reviewNotes:
+                reviewedBy === "AUTO" ? "Aprobado automáticamente al registrarse." : undefined,
+              createdUserId: user.id,
+              createdBusinessId: business.id,
+            },
+          });
+
+          return { userId: user.id, businessId: business.id, clientCode };
         },
-        select: { id: true },
+        // Sin GET_LOCK de por medio no hace falta el margen de 20s que tenía
+        // antes: el trabajo real (unas pocas filas) entra sobrado en el
+        // timeout por defecto de Prisma, pero se deja explícito para no
+        // depender de que ese default no cambie.
+        { maxWait: 10_000, timeout: 15_000 },
+      );
+
+      // Recién después de que la transacción confirmó todo: si Discord
+      // falla, la cuenta igual quedó creada y utilizable.
+      void emitNewClient({
+        eventId: `registration-approved:${registration.id}`,
+        userId: result.userId,
+        userName: fullName,
+        userEmail: registration.email,
+        businessId: result.businessId,
+        businessName: registration.businessName,
+        clientCode: result.clientCode,
+        source: reviewedBy,
       });
 
-      step = "create-business";
-      const business = await tx.business.create({
-        data: {
-          name: registration.businessName,
-          slug,
-          industry: registration.industry,
-          legalId: registration.legalId,
-          phone: registration.phone,
-          whatsapp: registration.whatsapp,
-          address: [registration.address, registration.canton, registration.province]
-            .filter(Boolean)
-            .join(", "),
-          ownerId: user.id,
-          members: { create: { userId: user.id, role: BusinessRole.OWNER } },
-        },
-        select: { id: true },
-      });
+      return { clientCode: result.clientCode };
+    } catch (error) {
+      if (isUniqueConstraintOn(error, "email")) {
+        return {
+          error: `Ya existe una cuenta con ${registration.email}. Rechazá la solicitud o cambiá el correo.`,
+        };
+      }
+      if (isUniqueConstraintOn(error, "Business_name_key")) {
+        return {
+          error: "Ya existe un negocio con ese nombre. Revisá si es un duplicado antes de aprobar.",
+        };
+      }
+      if (isUniqueConstraintOn(error, "User_name_key")) {
+        return {
+          error: "Ya existe una cuenta con ese nombre. Revisá si es un duplicado antes de aprobar.",
+        };
+      }
+      if (isUniqueConstraintOn(error, "clientCode", "slug")) {
+        // Otra alta concurrente tomó el código o el slug calculado entre el
+        // cálculo y el insert: no es un error real, es la carrera que este
+        // reintento existe para resolver. Se reintenta con el siguiente
+        // candidato en vez de fallarle a quien se está registrando.
+        if (attempt < MAX_CODE_COLLISION_RETRIES) continue;
 
-      // Cada enlace que la persona ya tenía a mano al registrarse se publica
-      // de una vez: así el negocio no estrena la placa con la landing vacía.
-      // Van en el mismo orden en que aparecen en el formulario, para que la
-      // landing quede como se la mostró la vista previa del registro.
-      type EnlaceInicial = { type: LinkType; label: string; url: string };
-
-      const enlacesIniciales: EnlaceInicial[] = [];
-      if (registration.menuUrl) {
-        enlacesIniciales.push({
-          type: LinkType.MENU,
-          label: "Ver menú",
-          url: registration.menuUrl,
-        });
-      }
-      if (registration.instagramUrl) {
-        enlacesIniciales.push({
-          type: LinkType.INSTAGRAM,
-          label: "Instagram",
-          url: registration.instagramUrl,
-        });
-      }
-      if (registration.facebookUrl) {
-        enlacesIniciales.push({
-          type: LinkType.FACEBOOK,
-          label: "Facebook",
-          url: registration.facebookUrl,
-        });
-      }
-      if (registration.googleReviewsUrl) {
-        enlacesIniciales.push({
-          type: LinkType.GOOGLE_REVIEWS,
-          label: "Dejanos tu reseña",
-          url: registration.googleReviewsUrl,
-        });
+        logRegistrationFailure({ registration, reviewedBy, step, attempt, error });
+        return {
+          error:
+            "No se pudo completar el alta por demasiadas altas al mismo tiempo. Volvé a intentarlo.",
+        };
       }
 
-      if (enlacesIniciales.length > 0) {
-        step = "create-initial-links";
-        await tx.businessLink.createMany({
-          data: enlacesIniciales.map((link, position) => ({
-            ...link,
-            businessId: business.id,
-            position,
-          })),
-        });
-      }
-
-      step = "update-registration";
-      await tx.registration.update({
-        where: { id: registration.id },
-        data: {
-          status: RegistrationStatus.APPROVED,
-          reviewedAt: new Date(),
-          reviewNotes:
-            reviewedBy === "AUTO" ? "Aprobado automáticamente al registrarse." : undefined,
-          createdUserId: user.id,
-          createdBusinessId: business.id,
-        },
-      });
-
-      createdUserId = user.id;
-      createdBusinessId = business.id;
-    });
-  } catch (error) {
-    if (error instanceof NameConflictError) return { error: error.message };
-
-    // Diagnóstico temporal: nunca se loguea passwordHash ni ningún secreto,
-    // solo identificadores y el error real (código/mensaje de Prisma o de
-    // MariaDB) para saber qué paso falló en producción en vez de adivinar.
-    const prismaCode =
-      error && typeof error === "object" && "code" in error
-        ? String((error as { code: unknown }).code)
-        : undefined;
-    const prismaMeta =
-      error && typeof error === "object" && "meta" in error
-        ? (error as { meta: unknown }).meta
-        : undefined;
-
-    console.error("[registration-approve] fallo en finalizeRegistration", {
-      registrationId: registration.id,
-      email: registration.email,
-      businessName: registration.businessName,
-      reviewedBy,
-      step,
-      clientCode,
-      slug,
-      errorCode: prismaCode,
-      errorMeta: prismaMeta,
-      errorMessage: error instanceof Error ? error.message : String(error),
-      errorStack: error instanceof Error ? error.stack : undefined,
-    });
-
-    if (prismaCode === "P2002") {
-      // Unique constraint: casi seguro clientCode o slug calculados antes del
-      // lock, que otra alta ya tomó entre el cálculo y el insert.
-      return {
-        error:
-          "No se pudo completar el alta: el código de cliente o el identificador del negocio ya estaban en uso. Volvé a intentarlo.",
-      };
+      // Cualquier otro error es inesperado: se registra con el detalle real
+      // (nunca oculto detrás de un mensaje genérico sin dejar rastro) y no
+      // se reintenta, porque reintentar un error desconocido no tiene por
+      // qué resolverlo.
+      logRegistrationFailure({ registration, reviewedBy, step, attempt, error });
+      return { error: "No se pudo completar el alta. Volvé a intentarlo." };
     }
-
-    return { error: "No se pudo completar el alta. Volvé a intentarlo." };
   }
 
-  // Recién después de que la transacción confirmó todo: si Discord falla,
-  // la cuenta igual quedó creada y utilizable.
-  void emitNewClient({
-    eventId: `registration-approved:${registration.id}`,
-    userId: createdUserId,
-    userName: fullName,
-    userEmail: registration.email,
-    businessId: createdBusinessId,
-    businessName: registration.businessName,
-    clientCode,
-    source: reviewedBy,
-  });
-
-  return { clientCode };
+  // Inalcanzable: el bucle siempre retorna dentro del try/catch. Está acá
+  // solo para que TypeScript vea una función total.
+  return { error: "No se pudo completar el alta. Volvé a intentarlo." };
 }
 
 /**
@@ -448,8 +519,20 @@ export async function deleteRegistration(formData: FormData): Promise<void> {
   revalidatePath("/app/registrations");
 }
 
-/** Deriva un identificador legible del nombre y lo hace único. */
-async function availableSlug(businessName: string): Promise<string> {
+/**
+ * Deriva un identificador legible del nombre y lo hace único.
+ *
+ * Recibe el `tx` de la transacción activa: igual que `nextClientCode`, así
+ * ve el estado más reciente de la base sin abrir una conexión aparte
+ * mientras la transacción está abierta. La garantía final contra dos altas
+ * concurrentes calculando el mismo slug la da el índice único de
+ * `Business.slug` — este bucle solo reduce cuánto tiene que reintentar
+ * `finalizeRegistration` cuando eso pasa.
+ */
+async function availableSlug(
+  businessName: string,
+  db: typeof prisma | Prisma.TransactionClient = prisma,
+): Promise<string> {
   const base =
     businessName
       .normalize("NFD")
@@ -461,7 +544,7 @@ async function availableSlug(businessName: string): Promise<string> {
 
   for (let attempt = 0; attempt < 50; attempt++) {
     const candidate = attempt === 0 ? base : `${base}-${attempt + 1}`;
-    const taken = await prisma.business.findUnique({
+    const taken = await db.business.findUnique({
       where: { slug: candidate },
       select: { id: true },
     });

@@ -211,7 +211,14 @@ model User {
   // correo, y para referirse a un cliente sin usar su id interno.
   clientCode   String?  @unique
   passwordHash String
-  name         String
+  // Único a nivel de base (no solo de aplicación): la collation por defecto
+  // de la base (utf8mb4_unicode_ci) ya pliega mayúsculas y acentos, así que
+  // esta restricción por sí sola rechaza "María Rodríguez" == "MARIA
+  // RODRIGUEZ" == "Maria Rodriguez" sin lógica extra. Es la garantía real
+  // contra altas concurrentes con el mismo nombre; la comprobación previa en
+  // `uniqueness.ts` solo existe para devolver un mensaje amigable antes de
+  // llegar a la base.
+  name         String   @unique
   role         UserRole @default(CLIENT)
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
@@ -230,7 +237,10 @@ model User {
 model Business {
   id          String   @id @default(cuid())
   ownerId     String?
-  name        String
+  // Mismo razonamiento que User.name: la collation utf8mb4_unicode_ci de la
+  // base ya es insensible a mayúsculas y acentos, así que el `@unique` es la
+  // garantía real contra dos negocios con el mismo nombre creados a la vez.
+  name        String   @unique
   slug        String   @unique
   legalId     String?
   description String?

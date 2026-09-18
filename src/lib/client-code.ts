@@ -1,4 +1,7 @@
+import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+
+type Db = typeof prisma | Prisma.TransactionClient;
 
 /**
  * Código visible de cliente, tipo `TGC-0001`.
@@ -30,14 +33,19 @@ export function parseClientCode(code: string): number | null {
  * cuenta se borra, contar volvería a entregar un código ya usado.
  *
  * Quien lo llama debe manejar la colisión —el índice único de la base es la
- * garantía real— porque entre el cálculo y la inserción podría entrar otra alta.
- * En la práctica las aprobaciones son manuales y no concurren.
+ * garantía real— porque entre el cálculo y la inserción podría entrar otra
+ * alta. `finalizeRegistration` la maneja reintentando con el siguiente
+ * código dentro de la misma transacción cuando el `create` choca con P2002 en
+ * `clientCode`; por eso este cálculo puede recibir el `tx` de esa
+ * transacción, para ver los códigos que la propia transacción ya reservó en
+ * intentos previos si algún día se anidara, y para no abrir una conexión
+ * aparte mientras la transacción sigue abierta.
  */
-export async function nextClientCode(): Promise<string> {
+export async function nextClientCode(db: Db = prisma): Promise<string> {
   // Se trae la columna y se calcula el máximo en memoria en lugar de ordenar en
   // SQL: el orden alfabético pondría TGC-10000 antes que TGC-9999 y el contador
   // retrocedería al superar los cuatro dígitos.
-  const codes = await prisma.user.findMany({
+  const codes = await db.user.findMany({
     where: { clientCode: { not: null } },
     select: { clientCode: true },
   });

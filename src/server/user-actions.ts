@@ -7,7 +7,7 @@ import { BusinessRole, UserRole } from "@/generated/prisma/enums";
 import type { ActionState } from "@/lib/action-state";
 import { requireRoot, requireUser } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
-import { clientNameTaken, NameConflictError, withNameLock } from "@/lib/uniqueness";
+import { clientNameTaken, isUniqueConstraintOn } from "@/lib/uniqueness";
 import {
   firstIssue,
   formValues,
@@ -51,30 +51,33 @@ export async function createClientUser(
 
   const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
-  try {
-    await withNameLock(name, async (tx) => {
-      if (await clientNameTaken(name, undefined, undefined, tx)) {
-        throw new NameConflictError("Ya existe una cuenta con ese nombre.");
-      }
+  // Comprobación amigable antes de intentar; la garantía real contra dos
+  // altas concurrentes con el mismo nombre es el índice único de
+  // `User.name` (ver `uniqueness.ts`), no un lock de aplicación.
+  if (await clientNameTaken(name)) {
+    return { error: "Ya existe una cuenta con ese nombre." };
+  }
 
-      await tx.user.create({
-        data: {
-          email,
-          name,
-          role: UserRole.CLIENT,
-          passwordHash,
-          ...(businessId
-            ? {
-                memberships: {
-                  create: { businessId, role: BusinessRole.OWNER },
-                },
-              }
-            : {}),
-        },
-      });
+  try {
+    await prisma.user.create({
+      data: {
+        email,
+        name,
+        role: UserRole.CLIENT,
+        passwordHash,
+        ...(businessId
+          ? {
+              memberships: {
+                create: { businessId, role: BusinessRole.OWNER },
+              },
+            }
+          : {}),
+      },
     });
   } catch (error) {
-    if (error instanceof NameConflictError) return { error: error.message };
+    if (isUniqueConstraintOn(error, "User_name_key")) {
+      return { error: "Ya existe una cuenta con ese nombre." };
+    }
     throw error;
   }
 

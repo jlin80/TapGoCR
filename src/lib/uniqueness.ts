@@ -1,5 +1,5 @@
 import { RegistrationStatus } from "@/generated/prisma/enums";
-import type { Prisma } from "@/generated/prisma/client";
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 
 /**
@@ -9,15 +9,21 @@ import { prisma } from "@/lib/prisma";
  * "Café Central", "CAFÉ CENTRAL" y "Cafe Central" son, a estos efectos, el
  * mismo choque.
  *
- * La comparación se hace en JS (no con `mode: "insensitive"` de Prisma, que en
- * Postgres solo pliega mayúsculas/minúsculas, nunca acentos) trayendo el
- * conjunto completo de nombres candidatos. El volumen de negocios/clientes de
- * un SaaS de este tamaño no justifica una extensión `unaccent` en Postgres
- * solo para esto.
+ * Estas dos funciones son solo una comprobación amigable ANTES de intentar
+ * crear: le devuelven a quien se registra o a ROOT un mensaje claro sin tener
+ * que esperar a que la base rechace el insert. La garantía real contra dos
+ * altas concurrentes con el mismo nombre es el índice único de
+ * `User.name`/`Business.name` (ver migración `20260918180000_unique_names`):
+ * la collation por defecto de la base (utf8mb4_unicode_ci) ya es insensible a
+ * mayúsculas y acentos, así que el índice por sí solo hace cumplir esta misma
+ * regla sin depender de un lock de aplicación. `isUniqueConstraintOn` más
+ * abajo es lo que traduce esa violación en un mensaje igual de claro cuando
+ * esta comprobación previa no alcanzó a detectar la carrera.
  *
- * Cuenta tanto los negocios/clientes ya creados como las solicitudes
- * PENDIENTES: una solicitud rechazada no reserva el nombre, pero una pendiente
- * sí, porque puede aprobarse en cualquier momento.
+ * También cuenta las solicitudes PENDIENTES: una solicitud rechazada no
+ * reserva el nombre, pero una pendiente sí, porque puede aprobarse en
+ * cualquier momento (típicamente por el mecanismo de recuperación manual,
+ * `approveRegistration`).
  */
 
 type Db = typeof prisma | Prisma.TransactionClient;
@@ -89,65 +95,39 @@ export async function clientNameTaken(
   );
 }
 
-/** Se lanza dentro de {@link withNameLock} cuando el nombre ya está en uso. */
-export class NameConflictError extends Error {}
-
 /**
- * Reduce el nombre normalizado a un entero de 32 bits, igual que hacía
- * `hashtext` de Postgres: el lock es por ese hash, no por el nombre en sí, así
- * que en teoría dos nombres distintos podrían colisionar en el mismo lock — a
- * costo de una espera ocasional e inofensiva, nunca de un falso "nombre
- * libre".
- */
-function hashName(normalized: string): string {
-  let hash = 0;
-  for (let i = 0; i < normalized.length; i++) {
-    hash = (Math.imul(31, hash) + normalized.charCodeAt(i)) | 0;
-  }
-  return `tapgocr_name:${hash}`;
-}
-
-/**
- * Serializa el patrón "verificar que el nombre esté libre, luego crear" contra
- * la propia base de datos, con `GET_LOCK`/`RELEASE_LOCK` de MySQL, para que
- * dos altas concurrentes con el mismo nombre no puedan colarse ambas: sin
- * esto, `businessNameTaken` y el `create` posterior son dos pasos separados, y
- * nada impide que dos solicitudes lean "libre" al mismo tiempo antes de que
- * cualquiera cree su fila.
+ * Interpreta el error P2002 ("Unique constraint failed") de Prisma y dice
+ * si afecta a alguno de los campos/índices dados.
  *
- * A diferencia de `pg_advisory_xact_lock` de Postgres (que libera solo al
- * hacer commit/rollback), `GET_LOCK` tiene ámbito de sesión, no de
- * transacción: hay que liberarlo explícitamente en un `finally`. Dentro de un
- * `$transaction` interactivo, todas las consultas de `tx` corren sobre la
- * misma conexión, así que el lock y su liberación quedan en la misma sesión.
+ * En otros conectores `error.meta.target` trae el nombre de columna, pero el
+ * adaptador `@prisma/adapter-mariadb` que usa este proyecto NO llena
+ * `target`: el nombre del índice viola do viene anidado en
+ * `error.meta.driverAdapterError.cause.constraint.index` (confirmado
+ * disparando un P2002 real contra la base de dev — la forma no está
+ * documentada). Se revisan ambos lugares, con `target` como respaldo por si
+ * el conector cambia de comportamiento en una actualización futura. Sirve
+ * para decidir, tras un fallo de `create`, si hay que reintentar con otro
+ * valor calculado (`clientCode`/`slug`) o si es un choque real de datos que
+ * hay que devolverle a quien aprueba.
  */
-export async function withNameLock<T>(
-  name: string,
-  fn: (tx: Prisma.TransactionClient) => Promise<T>,
-): Promise<T> {
-  const normalized = normalizeName(name);
-  const lockName = hashName(normalized);
-  return prisma.$transaction(
-    async (tx) => {
-      const [{ acquired }] = await tx.$queryRaw<[{ acquired: number }]>`
-      SELECT GET_LOCK(${lockName}, 10) AS acquired
-    `;
-      if (acquired !== 1) {
-        throw new Error(`No se pudo obtener el lock de nombre "${lockName}" a tiempo`);
-      }
-      try {
-        return await fn(tx);
-      } finally {
-        await tx.$executeRaw`SELECT RELEASE_LOCK(${lockName})`;
-      }
-    },
-    // GET_LOCK espera hasta 10s por sí solo. El timeout por defecto de una
-    // transacción interactiva de Prisma es 5s: si el lock tarda en liberarse
-    // (otra aprobación en curso, o simple latencia de red hacia la base), la
-    // transacción entera se cerraba sola ANTES de que GET_LOCK terminara,
-    // con un error genérico ("Transaction already closed") que no tenía nada
-    // que ver con el nombre ni con datos duplicados. Se da margen a que
-    // GET_LOCK complete su propia espera de 10s más el resto del trabajo.
-    { maxWait: 15_000, timeout: 20_000 },
+export function isUniqueConstraintOn(error: unknown, ...fields: string[]): boolean {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError)) return false;
+  if (error.code !== "P2002") return false;
+
+  const targets: string[] = [];
+
+  const target = error.meta?.target;
+  if (Array.isArray(target)) targets.push(...target.map(String));
+  else if (target != null) targets.push(String(target));
+
+  const driverIndex = (
+    error.meta?.driverAdapterError as
+      | { cause?: { constraint?: { index?: string } } }
+      | undefined
+  )?.cause?.constraint?.index;
+  if (driverIndex) targets.push(driverIndex);
+
+  return fields.some((field) =>
+    targets.some((t) => t.toLowerCase().includes(field.toLowerCase())),
   );
 }

@@ -9,7 +9,7 @@ import { requireRoot } from "@/lib/authz";
 import { notifyAdminAction } from "@/lib/discord/events";
 import { emitPlanChanged } from "@/lib/notifications/dispatch";
 import { prisma } from "@/lib/prisma";
-import { businessNameTaken, NameConflictError, withNameLock } from "@/lib/uniqueness";
+import { businessNameTaken, isUniqueConstraintOn } from "@/lib/uniqueness";
 import { resolveImageField } from "@/lib/uploads";
 import { businessSchema, firstIssue, formValues } from "@/lib/validation";
 
@@ -32,21 +32,24 @@ export async function createBusiness(
   });
   if (taken) return { error: "Ya existe un negocio con ese identificador." };
 
+  // Comprobación amigable antes de intentar; la garantía real contra dos
+  // altas concurrentes con el mismo nombre es el índice único de
+  // `Business.name` (ver `uniqueness.ts`), no un lock de aplicación.
+  if (await businessNameTaken(parsed.data.name)) {
+    return { error: "Ya existe un negocio con ese nombre." };
+  }
+
   let businessId: string;
   try {
-    businessId = await withNameLock(parsed.data.name, async (tx) => {
-      if (await businessNameTaken(parsed.data.name, undefined, undefined, tx)) {
-        throw new NameConflictError("Ya existe un negocio con ese nombre.");
-      }
-
-      const business = await tx.business.create({
-        data: parsed.data,
-        select: { id: true },
-      });
-      return business.id;
+    const business = await prisma.business.create({
+      data: parsed.data,
+      select: { id: true },
     });
+    businessId = business.id;
   } catch (error) {
-    if (error instanceof NameConflictError) return { error: error.message };
+    if (isUniqueConstraintOn(error, "Business_name_key")) {
+      return { error: "Ya existe un negocio con ese nombre." };
+    }
     throw error;
   }
 

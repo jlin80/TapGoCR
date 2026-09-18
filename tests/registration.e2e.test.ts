@@ -140,6 +140,97 @@ describe("registro público", () => {
     });
     assert.equal(registration, null, "se guardó un envío de robot");
   });
+
+  it("rechaza un nombre de negocio ya usado por otro cliente", async (t) => {
+    if (!serverUp) return t.skip("servidor no disponible");
+
+    // APPLICANT ya se registró y aprobó en la prueba anterior: su
+    // businessName ya existe como Business real. La comprobación amigable de
+    // `submitRegistration` lo detecta ANTES de guardar la solicitud, así que
+    // ni siquiera queda un registro PENDING — es un error de formulario, no
+    // una solicitud a medio resolver.
+    const email = "duplicado.negocio.e2e@ejemplo.test";
+    const status = await submitRegistration({ ...APPLICANT, email });
+    assert.equal(status, 200);
+
+    const registration = await prisma.registration.findUnique({
+      where: { email },
+      select: { id: true },
+    });
+    assert.equal(registration, null, "no debería guardar la solicitud con un negocio duplicado");
+
+    const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+    assert.equal(user, null, "no debería crear una cuenta con un negocio duplicado");
+  });
+
+  it("dos registros simultáneos con nombres distintos no se corrompen entre sí", async (t) => {
+    if (!serverUp) return t.skip("servidor no disponible");
+
+    // firstName/lastName también tienen que ser distintos de APPLICANT y
+    // entre sí: el nombre completo de cliente es único igual que el de
+    // negocio, y APPLICANT ya existe como cuenta desde la primera prueba de
+    // este archivo.
+    const a = {
+      ...APPLICANT,
+      firstName: "Concurrente",
+      lastName: "Prueba A",
+      email: "concurrente.a.e2e@ejemplo.test",
+      businessName: "Soda Concurrente A",
+    };
+    const b = {
+      ...APPLICANT,
+      firstName: "Concurrente",
+      lastName: "Prueba B",
+      email: "concurrente.b.e2e@ejemplo.test",
+      businessName: "Soda Concurrente B",
+    };
+
+    const [statusA, statusB] = await Promise.all([submitRegistration(a), submitRegistration(b)]);
+    assert.equal(statusA, 200);
+    assert.equal(statusB, 200);
+
+    for (const applicant of [a, b]) {
+      const registration = await prisma.registration.findUnique({
+        where: { email: applicant.email },
+        select: { status: true },
+      });
+      assert.equal(
+        registration?.status,
+        "APPROVED",
+        `${applicant.email} debería quedar aprobado aunque coincida en el tiempo con otra alta`,
+      );
+
+      const user = await prisma.user.findUnique({
+        where: { email: applicant.email },
+        select: { clientCode: true, memberships: true },
+      });
+      assert.ok(user, `${applicant.email} debería tener cuenta creada`);
+      assert.match(user.clientCode ?? "", /^TGC-\d{4}$/);
+      assert.equal(user.memberships.length, 1, "debería quedar dueño de exactamente un negocio");
+    }
+
+    const codeA = await prisma.user.findUnique({
+      where: { email: a.email },
+      select: { clientCode: true },
+    });
+    const codeB = await prisma.user.findUnique({
+      where: { email: b.email },
+      select: { clientCode: true },
+    });
+    assert.notEqual(codeA?.clientCode, codeB?.clientCode, "no debería asignar el mismo código a ambos");
+
+    await prisma.registration.deleteMany({ where: { email: { in: [a.email, b.email] } } });
+    const users = await prisma.user.findMany({
+      where: { email: { in: [a.email, b.email] } },
+      select: { id: true },
+    });
+    const businesses = await prisma.business.findMany({
+      where: { name: { in: [a.businessName, b.businessName] } },
+      select: { id: true },
+    });
+    await prisma.business.deleteMany({ where: { id: { in: businesses.map((x) => x.id) } } });
+    await prisma.user.deleteMany({ where: { id: { in: users.map((x) => x.id) } } });
+  });
 });
 
 describe("aprobación manual (respaldo)", () => {
@@ -186,7 +277,14 @@ async function isServerUp(): Promise<boolean> {
 
 /** Borra todo lo que la prueba pueda haber creado, en orden de dependencia. */
 async function cleanUp(): Promise<void> {
-  const emails = [APPLICANT.email, "robot.e2e@ejemplo.test"];
+  const emails = [
+    APPLICANT.email,
+    "robot.e2e@ejemplo.test",
+    "duplicado.negocio.e2e@ejemplo.test",
+    "concurrente.a.e2e@ejemplo.test",
+    "concurrente.b.e2e@ejemplo.test",
+  ];
+  const businessNames = [APPLICANT.businessName, "Soda Concurrente A", "Soda Concurrente B"];
 
   const users = await prisma.user.findMany({
     where: { email: { in: emails } },
@@ -194,7 +292,7 @@ async function cleanUp(): Promise<void> {
   });
 
   const businesses = await prisma.business.findMany({
-    where: { name: APPLICANT.businessName },
+    where: { name: { in: businessNames } },
     select: { id: true },
   });
 
